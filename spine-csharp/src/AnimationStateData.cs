@@ -77,6 +77,10 @@ namespace Spine {
 				this.a1 = a1;
 				this.a2 = a2;
 			}
+
+			public override string ToString () {
+				return a1.name + "->" + a2.name;
+			}
 		}
 
 		// Avoids boxing in the dictionary.

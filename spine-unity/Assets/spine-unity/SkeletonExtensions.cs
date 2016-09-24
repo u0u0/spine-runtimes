@@ -107,6 +107,10 @@ namespace Spine.Unity {
 namespace Spine {
 	public static class SkeletonExtensions {
 		#region Posing
+		public static void Apply (this Spine.Animation animation, Skeleton skeleton, float lastTime, float time, bool loop, ExposedList<Event> events) {
+			animation.Apply(skeleton, lastTime, time, loop, events, 1f, false, false);
+		}
+
 		/// <summary>
 		/// Shortcut for posing a skeleton at a specific time. Time is in seconds. (frameNumber / 30f) will give you seconds.
 		/// If you need to do this often, you should get the Animation object yourself using skeleton.data.FindAnimation. and call Apply on that.</summary>
@@ -118,7 +122,7 @@ namespace Spine {
 			// Fail loud when skeleton.data is null.
 			Spine.Animation animation = skeleton.data.FindAnimation(animationName);
 			if (animation == null) return;
-			animation.Apply(skeleton, 0, time, loop, null);
+			animation.Apply(skeleton, 0, time, loop, null, 1f, false, false);
 		}
 
 		/// <summary>Resets the DrawOrder to the Setup Pose's draw order</summary>
@@ -130,7 +134,6 @@ namespace Spine {
 			drawOrder.Clear(false);
 			drawOrder.GrowIfNeeded(n);
 			System.Array.Copy(slotsItems, drawOrder.Items, n);
-			drawOrder.Count = n;
 		}
 
 		/// <summary>Resets the color of a slot to Setup Pose value.</summary>
@@ -150,13 +153,14 @@ namespace Spine {
 		/// <summary>Resets the attachment of slot at a given slotIndex to setup pose. This is faster than Slot.SetAttachmentToSetupPose.</summary>
 		public static void SetSlotAttachmentToSetupPose (this Skeleton skeleton, int slotIndex) {
 			var slot = skeleton.slots.Items[slotIndex];
-			// Based on Slot.SetToSetupPose
-			if (slot.data.attachmentName == null)
+			var attachmentName = slot.data.attachmentName;
+			if (string.IsNullOrEmpty(attachmentName)) {
 				slot.Attachment = null;
-			else {
-				slot.attachment = null;
-				slot.Attachment = skeleton.GetAttachment(slotIndex, slot.data.attachmentName);
+			} else {
+				var attachment = skeleton.GetAttachment(slotIndex, attachmentName);
+				slot.Attachment = attachment;
 			}
+
 		}
 
 		/// <summary>Resets Skeleton parts to Setup Pose according to a Spine.Animation's keyed items.</summary>

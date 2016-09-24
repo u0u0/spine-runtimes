@@ -124,7 +124,7 @@ namespace Spine.Unity {
 							continue;
 
 						float time = stateInfo.normalizedTime * info.clip.length;
-						animationTable[GetAnimationClipNameHashCode(info.clip)].Mix(skeleton, Mathf.Max(0, time - deltaTime), time, stateInfo.loop, events, weight);
+						animationTable[GetAnimationClipNameHashCode(info.clip)].Apply(skeleton, Mathf.Max(0, time - deltaTime), time, stateInfo.loop, events, weight, false, false);
 						#if USE_SPINE_EVENTS
 						FireEvents(events, weight, this.AnimationEvent);
 						#endif
@@ -141,7 +141,7 @@ namespace Spine.Unity {
 								continue;
 
 							float time = nextStateInfo.normalizedTime * info.clip.length;
-							animationTable[GetAnimationClipNameHashCode(info.clip)].Mix(skeleton, Mathf.Max(0, time - deltaTime), time, nextStateInfo.loop, events, weight);
+							animationTable[GetAnimationClipNameHashCode(info.clip)].Apply(skeleton, Mathf.Max(0, time - deltaTime), time, nextStateInfo.loop, events, weight, false, false);
 							#if USE_SPINE_EVENTS
 							FireEvents(events, weight, this.AnimationEvent);
 							#endif
@@ -158,7 +158,7 @@ namespace Spine.Unity {
 							continue;
 
 						float time = stateInfo.normalizedTime * info.clip.length;
-						animationTable[GetAnimationClipNameHashCode(info.clip)].Apply(skeleton, Mathf.Max(0, time - deltaTime), time, stateInfo.loop, events);
+						animationTable[GetAnimationClipNameHashCode(info.clip)].Apply(skeleton, Mathf.Max(0, time - deltaTime), time, stateInfo.loop, events, 1f, false, false);
 						#if USE_SPINE_EVENTS
 						FireEvents(events, weight, this.AnimationEvent);
 						#endif
@@ -173,7 +173,7 @@ namespace Spine.Unity {
 							continue;
 
 						float time = stateInfo.normalizedTime * info.clip.length;
-						animationTable[GetAnimationClipNameHashCode(info.clip)].Mix(skeleton, Mathf.Max(0, time - deltaTime), time, stateInfo.loop, events, weight);
+						animationTable[GetAnimationClipNameHashCode(info.clip)].Apply(skeleton, Mathf.Max(0, time - deltaTime), time, stateInfo.loop, events, weight, false, false);
 						#if USE_SPINE_EVENTS
 						FireEvents(events, weight, this.AnimationEvent);
 						#endif
@@ -194,7 +194,7 @@ namespace Spine.Unity {
 									continue;
 
 								float time = nextStateInfo.normalizedTime * info.clip.length;
-								animationTable[GetAnimationClipNameHashCode(info.clip)].Apply(skeleton, Mathf.Max(0, time - deltaTime), time, nextStateInfo.loop, events);
+								animationTable[GetAnimationClipNameHashCode(info.clip)].Apply(skeleton, Mathf.Max(0, time - deltaTime), time, nextStateInfo.loop, events, 1f, false, false);
 								#if USE_SPINE_EVENTS
 								FireEvents(events, weight, this.AnimationEvent);
 								#endif
@@ -210,7 +210,7 @@ namespace Spine.Unity {
 								continue;
 
 							float time = nextStateInfo.normalizedTime * info.clip.length;
-							animationTable[GetAnimationClipNameHashCode(info.clip)].Mix(skeleton, Mathf.Max(0, time - deltaTime), time, nextStateInfo.loop, events, weight);
+							animationTable[GetAnimationClipNameHashCode(info.clip)].Apply(skeleton, Mathf.Max(0, time - deltaTime), time, nextStateInfo.loop, events, weight, false, false);
 							#if USE_SPINE_EVENTS
 							FireEvents(events, weight, this.AnimationEvent);
 							#endif

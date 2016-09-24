@@ -633,7 +633,7 @@ namespace Spine.Unity.Editor {
 
 			if (calculateMixTime) {
 				if (m_skeletonAnimation.state.GetCurrent(0) != null)
-					m_adjustFrameEndTime = EditorApplication.timeSinceStartup + m_skeletonAnimation.state.GetCurrent(0).Mix;
+					m_adjustFrameEndTime = EditorApplication.timeSinceStartup + m_skeletonAnimation.state.GetCurrent(0).Alpha;
 			}
 				
 			GameObject go = this.m_previewInstance;
@@ -787,8 +787,8 @@ namespace Spine.Unity.Editor {
 			TrackEntry t = m_skeletonAnimation.state.GetCurrent(0);
 
 			if (t != null) {
-				int loopCount = (int)(t.Time / t.EndTime);
-				float currentTime = t.Time - (t.EndTime * loopCount);
+				int loopCount = (int)(t.TrackTime / t.TrackEnd);
+				float currentTime = t.TrackTime - (t.TrackEnd * loopCount);
 
 				float normalizedTime = currentTime / t.Animation.Duration;
 

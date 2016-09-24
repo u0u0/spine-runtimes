@@ -120,8 +120,8 @@ namespace Spine {
 				b = lb;
 				c = lc;
 				d = ld;
-				worldX = x;
-				worldY = y;
+				worldX = x + skeleton.x;
+				worldY = y + skeleton.y;
 				worldSignX = Math.Sign(scaleX);
 				worldSignY = Math.Sign(scaleY);
 				return;

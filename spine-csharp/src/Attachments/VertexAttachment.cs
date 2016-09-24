@@ -54,15 +54,13 @@ namespace Spine {
 		public void ComputeWorldVertices (Slot slot, int start, int count, float[] worldVertices, int offset) {
 			count += offset;
 			Skeleton skeleton = slot.Skeleton;
-			float x = skeleton.x, y = skeleton.y;
 			var deformArray = slot.attachmentVertices;
 			float[] vertices = this.vertices;
 			int[] bones = this.bones;
 			if (bones == null) {
 				if (deformArray.Count > 0) vertices = deformArray.Items;
 				Bone bone = slot.bone;
-				x += bone.worldX;
-				y += bone.worldY;
+				float x = bone.worldX, y = bone.worldY;
 				float a = bone.a, b = bone.b, c = bone.c, d = bone.d;
 				for (int vv = start, w = offset; w < count; vv += 2, w += 2) {
 					float vx = vertices[vv], vy = vertices[vv + 1];
@@ -80,7 +78,7 @@ namespace Spine {
 			Bone[] skeletonBones = skeleton.Bones.Items;
 			if (deformArray.Count == 0) {
 				for (int w = offset, b = skip * 3; w < count; w += 2) {
-					float wx = x, wy = y;
+					float wx = 0, wy = 0;
 					int n = bones[v++];
 					n += v;
 					for (; v < n; v++, b += 3) {
@@ -95,7 +93,7 @@ namespace Spine {
 			} else {
 				float[] deform = deformArray.Items;
 				for (int w = offset, b = skip * 3, f = skip << 1; w < count; w += 2) {
-					float wx = x, wy = y;
+					float wx = 0, wy = 0;
 					int n = bones[v++];
 					n += v;
 					for (; v < n; v++, b += 3, f += 2) {

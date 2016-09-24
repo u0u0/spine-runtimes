@@ -1091,7 +1091,7 @@ namespace Spine.Unity.Editor {
 
 					currentTime = time;
 
-					timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+					timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 
 					lastTime = time;
 					listIndex++;
@@ -1118,7 +1118,7 @@ namespace Spine.Unity.Editor {
 
 					currentTime = time;
 
-					timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+					timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 
 					lastTime = time;
 					listIndex++;
@@ -1137,7 +1137,7 @@ namespace Spine.Unity.Editor {
 						if (i == steps)
 							currentTime = time;
 
-						timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+						timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 
 						px = xKeys[listIndex - 1];
 						py = yKeys[listIndex - 1];
@@ -1234,7 +1234,7 @@ namespace Spine.Unity.Editor {
 
 					currentTime = time;
 
-					timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+					timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 
 					lastTime = time;
 					listIndex++;
@@ -1261,7 +1261,7 @@ namespace Spine.Unity.Editor {
 
 					currentTime = time;
 
-					timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+					timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 
 					lastTime = time;
 					listIndex++;
@@ -1279,7 +1279,7 @@ namespace Spine.Unity.Editor {
 						if (i == steps)
 							currentTime = time;
 
-						timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+						timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 
 						px = xKeys[listIndex - 1];
 						py = yKeys[listIndex - 1];
@@ -1363,7 +1363,7 @@ namespace Spine.Unity.Editor {
 
 					currentTime = time;
 
-					timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+					timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 
 					lastTime = time;
 					listIndex++;
@@ -1388,7 +1388,7 @@ namespace Spine.Unity.Editor {
 
 					currentTime = time;
 
-					timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+					timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 
 					lastTime = time;
 					listIndex++;
@@ -1398,7 +1398,7 @@ namespace Spine.Unity.Editor {
 
 					float time = frames[f];
 
-					timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+					timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 					skeleton.UpdateWorldTransform();
 
 					rotation = frames[f + 1] + boneData.Rotation;
@@ -1412,7 +1412,7 @@ namespace Spine.Unity.Editor {
 						if (i == steps)
 							currentTime = time;
 
-						timeline.Apply(skeleton, lastTime, currentTime, null, 1);
+						timeline.Apply(skeleton, lastTime, currentTime, null, 1, false, false);
 						skeleton.UpdateWorldTransform();
 						pk = keys[listIndex - 1];
 

@@ -103,14 +103,12 @@ namespace Spine {
 
 			float[] positions = ComputeWorldPositions(attachment, spacesCount, tangents,
 				data.positionMode == PositionMode.Percent, spacingMode == SpacingMode.Percent);
-			Skeleton skeleton = target.Skeleton;
-			float skeletonX = skeleton.x, skeletonY = skeleton.y;
 			float boneX = positions[0], boneY = positions[1], offsetRotation = data.offsetRotation;
 			bool tip = rotateMode == RotateMode.Chain && offsetRotation == 0;
 			for (int i = 0, p = 3; i < boneCount; i++, p += 3) {
 				Bone bone = (Bone)bones[i];
-				bone.worldX += (boneX - skeletonX - bone.worldX) * translateMix;
-				bone.worldY += (boneY - skeletonY - bone.worldY) * translateMix;
+				bone.worldX += (boneX - bone.worldX) * translateMix;
+				bone.worldY += (boneY - bone.worldY) * translateMix;
 				float x = positions[p], y = positions[p + 1], dx = x - boneX, dy = y - boneY;
 				if (scale) {
 					float length = lengths.Items[i];
