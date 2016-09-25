@@ -38,7 +38,8 @@ namespace Spine {
 		internal BoneData parent;
 		internal float length;
 		internal float x, y, rotation, scaleX = 1, scaleY = 1, shearX, shearY;
-		internal bool inheritRotation = true, inheritScale = true;
+		internal TransformMode transformMode = TransformMode.Normal;
+		//internal bool inheritRotation = true, inheritScale = true;
 
 		/// <summary>May be null.</summary>
 		public int Index { get { return index; } }
@@ -52,8 +53,10 @@ namespace Spine {
 		public float ScaleY { get { return scaleY; } set { scaleY = value; } }
 		public float ShearX { get { return shearX; } set { shearX = value; } }
 		public float ShearY { get { return shearY; } set { shearY = value; } }
-		public bool InheritRotation { get { return inheritRotation; } set { inheritRotation = value; } }
-		public bool InheritScale { get { return inheritScale; } set { inheritScale = value; } }
+		public TransformMode TransformMode { get { return transformMode; } set { transformMode = value; } }
+//		public bool InheritRotation { get { return inheritRotation; } set { inheritRotation = value; } }
+//		public bool InheritScale { get { return inheritScale; } set { inheritScale = value; } }
+
 
 		/// <param name="parent">May be null.</param>
 		public BoneData (int index, String name, BoneData parent) {
@@ -67,5 +70,15 @@ namespace Spine {
 		override public String ToString () {
 			return name;
 		}
+	}
+
+	[Flags]
+	public enum TransformMode {
+		//0000 0FSR
+		Normal = 0, // 0000
+		NoRotation = 1, // 0001
+		NoScale = 2, // 0010
+		NoScaleOrReflection = 6, // 0110
+		OnlyTranslation = 7, // 0111
 	}
 }

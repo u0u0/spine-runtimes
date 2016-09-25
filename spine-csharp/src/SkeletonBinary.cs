@@ -136,8 +136,8 @@ namespace Spine {
 				data.shearX = ReadFloat(input);
 				data.shearY = ReadFloat(input);
 				data.length = ReadFloat(input) * scale;
-				data.inheritRotation = ReadBoolean(input);
-				data.inheritScale = ReadBoolean(input);
+//				data.inheritRotation = ReadBoolean(input);
+//				data.inheritScale = ReadBoolean(input);
 				if (nonessential) ReadInt(input); // Skip bone color.
 				skeletonData.bones.Add(data);
 			}

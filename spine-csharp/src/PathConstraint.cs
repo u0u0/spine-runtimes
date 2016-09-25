@@ -32,7 +32,7 @@
 using System;
 
 namespace Spine {
-	public class PathConstraint : IUpdatable {
+	public class PathConstraint : IConstraint {
 		private const int NONE = -1, BEFORE = -2, AFTER = -3;
 
 		internal PathConstraintData data;
@@ -44,6 +44,7 @@ namespace Spine {
 		internal ExposedList<float> world = new ExposedList<float>(), curves = new ExposedList<float>(), lengths = new ExposedList<float>();
 		internal float[] segments = new float[10];
 
+		public int Order { get { return data.order; } }
 		public float Position { get { return position; } set { position = value; } }
 		public float Spacing { get { return spacing; } set { spacing = value; } }
 		public float RotateMix { get { return rotateMix; } set { rotateMix = value; } }
@@ -128,7 +129,7 @@ namespace Spine {
 						r = positions[p + 2];
 					else
 						r = MathUtils.Atan2(dy, dx);
-					r -= MathUtils.Atan2(c, a) - offsetRotation * MathUtils.degRad;
+					r -= MathUtils.Atan2(c, a) - offsetRotation * MathUtils.DegRad;
 					if (tip) {
 						cos = MathUtils.Cos(r);
 						sin = MathUtils.Sin(r);
@@ -148,6 +149,7 @@ namespace Spine {
 					bone.c = sin * a + cos * c;
 					bone.d = sin * b + cos * d;
 				}
+				bone.appliedValid = false;
 			}
 		}
 
@@ -386,7 +388,7 @@ namespace Spine {
 
 		private void AddCurvePosition (float p, float x1, float y1, float cx1, float cy1, float cx2, float cy2, float x2, float y2,
 			float[] output, int o, bool tangents) {
-			if (p == 0) p = 0.0001f;
+			if (p == 0 || float.IsNaN(p)) p = 0.0001f;
 			float tt = p * p, ttt = tt * p, u = 1 - p, uu = u * u, uuu = uu * u;
 			float ut = u * p, ut3 = ut * 3, uut3 = u * ut3, utt3 = ut3 * p;
 			float x = x1 * uuu + cx1 * uut3 + cx2 * utt3 + x2 * ttt, y = y1 * uuu + cy1 * uut3 + cy2 * utt3 + y2 * ttt;

@@ -90,7 +90,7 @@ namespace Spine {
 					current.delay = 0;
 				}
 
-				TrackEntry next = current.next;//, mixingFrom = current.mixingFrom;
+				TrackEntry next = current.next;
 				if (next != null) {
 					// When the next entry's delay is passed, change to the next entry.
 					float nextTime = current.trackLast - next.delay;
