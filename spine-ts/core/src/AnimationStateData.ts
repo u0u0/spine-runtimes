@@ -1,10 +1,9 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.5
- * 
+ * Spine Runtimes Software License v2.5
+ *
  * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
+ *
  * You are granted a perpetual, non-exclusive, non-sublicensable, and
  * non-transferable license to use, install, execute, and perform the Spine
  * Runtimes software and derivative works solely for personal or internal
@@ -16,7 +15,7 @@
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -51,12 +50,12 @@ module spine {
 		setMixWith (from: Animation, to: Animation, duration: number) {
 			if (from == null) throw new Error("from cannot be null.");
 			if (to == null) throw new Error("to cannot be null.");
-			let key = from.name + to.name;
+			let key = from.name + "." + to.name;
 			this.animationToMixTime[key] = duration;
 		}
 
 		getMix (from: Animation, to: Animation) {
-			let key = from.name + to.name;
+			let key = from.name + "." + to.name;
 			let value = this.animationToMixTime[key];
 			return value === undefined ? this.defaultMix : value;
 		}

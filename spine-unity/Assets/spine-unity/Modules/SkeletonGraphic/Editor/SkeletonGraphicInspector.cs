@@ -1,36 +1,32 @@
-﻿/******************************************************************************
- * Spine Runtimes Software License
- * Version 2.3
- * 
- * Copyright (c) 2013-2015, Esoteric Software
+/******************************************************************************
+ * Spine Runtimes Software License v2.5
+ *
+ * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
- * You are granted a perpetual, non-exclusive, non-sublicensable and
- * non-transferable license to use, install, execute and perform the Spine
- * Runtimes Software (the "Software") and derivative works solely for personal
- * or internal use. Without the written permission of Esoteric Software (see
- * Section 2 of the Spine Software License Agreement), you may not (a) modify,
- * translate, adapt or otherwise create derivative works, improvements of the
- * Software or develop new applications using the Software or (b) remove,
- * delete, alter or obscure any trademarks or any copyright, trademark, patent
+ *
+ * You are granted a perpetual, non-exclusive, non-sublicensable, and
+ * non-transferable license to use, install, execute, and perform the Spine
+ * Runtimes software and derivative works solely for personal or internal
+ * use. Without the written permission of Esoteric Software (see Section 2 of
+ * the Spine Software License Agreement), you may not (a) modify, translate,
+ * adapt, or develop new applications using the Spine Runtimes or otherwise
+ * create derivative works or improvements of the Spine Runtimes or (b) remove,
+ * delete, alter, or obscure any trademarks or any copyright, trademark, patent,
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
  * EVENT SHALL ESOTERIC SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, BUSINESS INTERRUPTION, OR LOSS OF
+ * USE, DATA, OR PROFITS) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
-#if (UNITY_5_0 || UNITY_5_1 || UNITY_4_0 || UNITY_4_1 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_4_7)
-#define PREUNITY_5_2
-#endif
 
 using UnityEngine;
 using UnityEditor;
@@ -40,12 +36,14 @@ namespace Spine.Unity.Editor {
 
 	[InitializeOnLoad]
 	[CustomEditor(typeof(SkeletonGraphic))]
+	[CanEditMultipleObjects]
 	public class SkeletonGraphicInspector : UnityEditor.Editor {
-		SerializedProperty material_, color_;
-		SerializedProperty skeletonDataAsset_, initialSkinName_;
-		SerializedProperty startingAnimation_, startingLoop_, timeScale_, freeze_;
-	#if !PREUNITY_5_2
-		SerializedProperty raycastTarget_;
+		SerializedProperty material, color;
+		SerializedProperty skeletonDataAsset, initialSkinName;
+		SerializedProperty startingAnimation, startingLoop, timeScale, freeze, unscaledTime, tintBlack;
+		SerializedProperty initialFlipX, initialFlipY;
+		SerializedProperty meshGeneratorSettings;
+		SerializedProperty raycastTarget;
 
 		SkeletonGraphic thisSkeletonGraphic;
 
@@ -54,27 +52,34 @@ namespace Spine.Unity.Editor {
 			thisSkeletonGraphic = target as SkeletonGraphic;
 
 			// MaskableGraphic
-			material_ = so.FindProperty("m_Material");
-			color_ = so.FindProperty("m_Color");
-			raycastTarget_ = so.FindProperty("m_RaycastTarget");
+			material = so.FindProperty("m_Material");
+			color = so.FindProperty("m_Color");
+			raycastTarget = so.FindProperty("m_RaycastTarget");
 
 			// SkeletonRenderer
-			skeletonDataAsset_ = so.FindProperty("skeletonDataAsset");
-			initialSkinName_ = so.FindProperty("initialSkinName");
+			skeletonDataAsset = so.FindProperty("skeletonDataAsset");
+			initialSkinName = so.FindProperty("initialSkinName");
+
+			initialFlipX = so.FindProperty("initialFlipX");
+			initialFlipY = so.FindProperty("initialFlipY");
 
 			// SkeletonAnimation
-			startingAnimation_ = so.FindProperty("startingAnimation");
-			startingLoop_ = so.FindProperty("startingLoop");
-			timeScale_ = so.FindProperty("timeScale");
-			freeze_ = so.FindProperty("freeze");
+			startingAnimation = so.FindProperty("startingAnimation");
+			startingLoop = so.FindProperty("startingLoop");
+			timeScale = so.FindProperty("timeScale");
+			unscaledTime = so.FindProperty("unscaledTime");
+			freeze = so.FindProperty("freeze");
+
+			meshGeneratorSettings = so.FindProperty("meshGenerator").FindPropertyRelative("settings");
+			meshGeneratorSettings.isExpanded = SkeletonRendererInspector.advancedFoldout;
 		}
 
 		public override void OnInspectorGUI () {
 			EditorGUI.BeginChangeCheck();
 
-			EditorGUILayout.PropertyField(skeletonDataAsset_);
-			EditorGUILayout.PropertyField(material_);
-			EditorGUILayout.PropertyField(color_);
+			EditorGUILayout.PropertyField(skeletonDataAsset);
+			EditorGUILayout.PropertyField(material);
+			EditorGUILayout.PropertyField(color);
 
 			if (thisSkeletonGraphic.skeletonDataAsset == null) {
 				EditorGUILayout.HelpBox("You need to assign a SkeletonDataAsset first.", MessageType.Info);
@@ -82,32 +87,56 @@ namespace Spine.Unity.Editor {
 				serializedObject.Update();
 				return;
 			}
+			using (new SpineInspectorUtility.BoxScope()) {
+				EditorGUILayout.PropertyField(meshGeneratorSettings, SpineInspectorUtility.TempContent("Advanced..."), includeChildren: true);
+				SkeletonRendererInspector.advancedFoldout = meshGeneratorSettings.isExpanded;
+			}
 
 			EditorGUILayout.Space();
-			EditorGUILayout.PropertyField(initialSkinName_);
+			EditorGUILayout.PropertyField(initialSkinName);
+			{
+				var rect = GUILayoutUtility.GetRect(EditorGUIUtility.currentViewWidth, EditorGUIUtility.singleLineHeight);
+				EditorGUI.PrefixLabel(rect, SpineInspectorUtility.TempContent("Initial Flip"));
+				rect.x += EditorGUIUtility.labelWidth;
+				rect.width = 30f;
+				initialFlipX.boolValue = EditorGUI.ToggleLeft(rect, SpineInspectorUtility.TempContent("X", tooltip:"initialFlipX"), initialFlipX.boolValue);
+				rect.x += 35f;
+				initialFlipY.boolValue = EditorGUI.ToggleLeft(rect, SpineInspectorUtility.TempContent("Y", tooltip:"initialFlipY"), initialFlipY.boolValue);
+			}
+
 			EditorGUILayout.Space();
 			EditorGUILayout.LabelField("Animation", EditorStyles.boldLabel);
-			EditorGUILayout.PropertyField(startingAnimation_);
-			EditorGUILayout.PropertyField(startingLoop_);
-			EditorGUILayout.PropertyField(timeScale_);
+			EditorGUILayout.PropertyField(startingAnimation);
+			EditorGUILayout.PropertyField(startingLoop);
+			EditorGUILayout.PropertyField(timeScale);
+			EditorGUILayout.PropertyField(unscaledTime, SpineInspectorUtility.TempContent(unscaledTime.displayName, tooltip: "If checked, this will use Time.unscaledDeltaTime to make this update independent of game Time.timeScale. Instance SkeletonGraphic.timeScale will still be applied."));
 			EditorGUILayout.Space();
-			EditorGUILayout.PropertyField(freeze_);
+			EditorGUILayout.PropertyField(freeze);
 			EditorGUILayout.Space();
 			EditorGUILayout.LabelField("UI", EditorStyles.boldLabel);
-			EditorGUILayout.PropertyField(raycastTarget_);
+			EditorGUILayout.PropertyField(raycastTarget);
 
 			bool wasChanged = EditorGUI.EndChangeCheck();
 
-			if (wasChanged) {
+			if (wasChanged)
 				serializedObject.ApplyModifiedProperties();
-			}
 		}
 
 		#region Menus
 		[MenuItem("CONTEXT/SkeletonGraphic/Match RectTransform with Mesh Bounds")]
 		static void MatchRectTransformWithBounds (MenuCommand command) {
 			var skeletonGraphic = (SkeletonGraphic)command.context;
-			var mesh = skeletonGraphic.SpineMeshGenerator.LastGeneratedMesh;
+			Mesh mesh = skeletonGraphic.GetLastMesh();
+			if (mesh == null) {
+				Debug.Log("Mesh was not previously generated.");
+				return;
+			}
+
+			if (mesh.vertexCount == 0) {
+				skeletonGraphic.rectTransform.sizeDelta = new Vector2(50f, 50f);
+				skeletonGraphic.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+				return;
+			}
 
 			mesh.RecalculateBounds();
 			var bounds = mesh.bounds;
@@ -137,33 +166,6 @@ namespace Spine.Unity.Editor {
 			EditorGUIUtility.PingObject(Selection.activeObject);
 		}
 
-		[MenuItem("Assets/Spine/Instantiate (UnityUI)", false, 20)]
-		static void InstantiateSkeletonGraphic () {
-			Object[] arr = Selection.objects;
-			foreach (Object o in arr) {
-				string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(o));
-				string skinName = EditorPrefs.GetString(guid + "_lastSkin", "");
-
-				InstantiateSkeletonGraphic((SkeletonDataAsset)o, skinName);
-				SceneView.RepaintAll();
-			}
-		}
-
-		[MenuItem("Assets/Spine/Instantiate (UnityUI)", true, 20)]
-		static bool ValidateInstantiateSkeletonGraphic () {
-			Object[] arr = Selection.objects;
-
-			if (arr.Length == 0)
-				return false;
-
-			foreach (var selected in arr) {
-				if (selected.GetType() != typeof(SkeletonDataAsset))
-					return false;
-			}
-
-			return true;
-		}
-
 		// SpineEditorUtilities.InstantiateDelegate. Used by drag and drop.
 		public static Component SpawnSkeletonGraphicFromDrop (SkeletonDataAsset data) {
 			return InstantiateSkeletonGraphic(data);
@@ -190,14 +192,11 @@ namespace Spine.Unity.Editor {
 				data = skeletonDataAsset.GetSkeletonData(true);
 			}
 
-			if (skin == null)
-				skin = data.DefaultSkin;
-
-			if (skin == null)
-				skin = data.Skins.Items[0];
+			skin = skin ?? data.DefaultSkin ?? data.Skins.Items[0];
+			graphic.MeshGenerator.settings.zSpacing = SpineEditorUtilities.defaultZSpacing;
 
 			graphic.Initialize(false);
-			graphic.Skeleton.SetSkin(skin);
+			if (skin != null) graphic.Skeleton.SetSkin(skin);
 			graphic.initialSkinName = skin.Name;
 			graphic.Skeleton.UpdateWorldTransform();
 			graphic.UpdateMesh();
@@ -226,7 +225,5 @@ namespace Spine.Unity.Editor {
 		}
 
 		#endregion
-
-	#endif
 	}
 }

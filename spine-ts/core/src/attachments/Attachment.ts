@@ -1,10 +1,9 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.5
- * 
+ * Spine Runtimes Software License v2.5
+ *
  * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
+ *
  * You are granted a perpetual, non-exclusive, non-sublicensable, and
  * non-transferable license to use, install, execute, and perform the Spine
  * Runtimes software and derivative works solely for personal or internal
@@ -16,7 +15,7 @@
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -40,6 +39,9 @@ module spine {
 	}
 
 	export abstract class VertexAttachment extends Attachment {
+		private static nextID = 0;
+
+		id = (VertexAttachment.nextID++ & 65535) << 11;
 		bones: Array<number>;
 		vertices: ArrayLike<number>;
 		worldVerticesLength = 0;
@@ -48,29 +50,24 @@ module spine {
 			super(name);
 		}
 
-		computeWorldVertices (slot: Slot, worldVertices: ArrayLike<number>) {
-			this.computeWorldVerticesWith(slot, 0, this.worldVerticesLength, worldVertices, 0);
-		}
-
 		/** Transforms local vertices to world coordinates.
 		 * @param start The index of the first local vertex value to transform. Each vertex has 2 values, x and y.
 		 * @param count The number of world vertex values to output. Must be <= {@link #getWorldVerticesLength()} - start.
 		 * @param worldVertices The output world vertices. Must have a length >= offset + count.
 		 * @param offset The worldVertices index to begin writing values. */
-		computeWorldVerticesWith (slot: Slot, start: number, count: number, worldVertices: ArrayLike<number>, offset: number) {
-			count += offset;
+		computeWorldVertices (slot: Slot, start: number, count: number, worldVertices: ArrayLike<number>, offset: number, stride: number) {
+			count = offset + (count >> 1) * stride;
 			let skeleton = slot.bone.skeleton;
-			let x = skeleton.x, y = skeleton.y;
 			let deformArray = slot.attachmentVertices;
 			let vertices = this.vertices;
 			let bones = this.bones;
 			if (bones == null) {
 				if (deformArray.length > 0) vertices = deformArray;
 				let bone = slot.bone;
-				x += bone.worldX;
-				y += bone.worldY;
+				let x = bone.worldX;
+				let y = bone.worldY;
 				let a = bone.a, b = bone.b, c = bone.c, d = bone.d;
-				for (let v = start, w = offset; w < count; v += 2, w += 2) {
+				for (let v = start, w = offset; w < count; v += 2, w += stride) {
 					let vx = vertices[v], vy = vertices[v + 1];
 					worldVertices[w] = vx * a + vy * b + x;
 					worldVertices[w + 1] = vx * c + vy * d + y;
@@ -85,8 +82,8 @@ module spine {
 			}
 			let skeletonBones = skeleton.bones;
 			if (deformArray.length == 0) {
-				for (let w = offset, b = skip * 3; w < count; w += 2) {
-					let wx = x, wy = y;
+				for (let w = offset, b = skip * 3; w < count; w += stride) {
+					let wx = 0, wy = 0;
 					let n = bones[v++];
 					n += v;
 					for (; v < n; v++, b += 3) {
@@ -100,8 +97,8 @@ module spine {
 				}
 			} else {
 				let deform = deformArray;
-				for (let w = offset, b = skip * 3, f = skip << 1; w < count; w += 2) {
-					let wx = x, wy = y;
+				for (let w = offset, b = skip * 3, f = skip << 1; w < count; w += stride) {
+					let wx = 0, wy = 0;
 					let n = bones[v++];
 					n += v;
 					for (; v < n; v++, b += 3, f += 2) {

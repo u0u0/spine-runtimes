@@ -9,15 +9,15 @@
 <body>
 
 <center>
-<div class="aspect"><div><canvas id="tank-canvas"></canvas></div></div>
+<div class="aspect standalone"></div>
 <div id="tank-timeline" class="slider"></div>
 <input id="tank-playbutton" type="button" value="Pause"></input><br>
 <input id="tank-drawbones" type="checkbox"></input> Display bones
 </center>
 
 <script>
-spineDemos.loadSliders();
-tankDemo(spineDemos.setupRendering);
+spineDemos.init();
+spineDemos.addDemo(tankDemo, document.getElementsByClassName("aspect")[0]);
 </script>
 
 </body>

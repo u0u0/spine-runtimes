@@ -1,10 +1,9 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.5
- * 
+ * Spine Runtimes Software License v2.5
+ *
  * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
+ *
  * You are granted a perpetual, non-exclusive, non-sublicensable, and
  * non-transferable license to use, install, execute, and perform the Spine
  * Runtimes software and derivative works solely for personal or internal
@@ -16,7 +15,7 @@
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -34,6 +33,7 @@ module spine {
 		data: SlotData;
 		bone: Bone;
 		color: Color;
+		darkColor: Color;
 		private attachment: Attachment;
 		private attachmentTime: number;
 		attachmentVertices = new Array<number>();
@@ -44,6 +44,7 @@ module spine {
 			this.data = data;
 			this.bone = bone;
 			this.color = new Color();
+			this.darkColor = data.darkColor == null ? null : new Color();
 			this.setToSetupPose();
 		}
 
@@ -72,6 +73,7 @@ module spine {
 
 		setToSetupPose () {
 			this.color.setFromColor(this.data.color);
+			if (this.darkColor != null) this.darkColor.setFromColor(this.data.darkColor);
 			if (this.data.attachmentName == null)
 				this.attachment = null;
 			else {

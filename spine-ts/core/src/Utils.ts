@@ -1,10 +1,9 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.5
- * 
+ * Spine Runtimes Software License v2.5
+ *
  * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
+ *
  * You are granted a perpetual, non-exclusive, non-sublicensable, and
  * non-transferable license to use, install, execute, and perform the Spine
  * Runtimes software and derivative works solely for personal or internal
@@ -16,7 +15,7 @@
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -34,8 +33,34 @@ module spine {
 		[key: string]: T;
 	}
 
+	export class IntSet {
+		array = new Array<number>();
+
+		add (value: number): boolean {
+			let contains = this.contains(value);
+			this.array[value | 0] = value | 0;
+			return !contains;
+		}
+
+		contains (value: number) {
+			return this.array[value | 0] != undefined;
+		}
+
+		remove (value: number) {
+			this.array[value | 0] = undefined;
+		}
+
+		clear () {
+			this.array.length = 0;
+		}
+	}
+
 	export interface Disposable {
 		dispose (): void;
+	}
+
+	export interface Restorable {
+		restore (): void;
 	}
 
 	export class Color {
@@ -122,7 +147,7 @@ module spine {
 		}
 
 		static signum (value: number): number {
-			return value >= 0 ? 1 : -1;
+			return value > 0 ? 1 : value < 0 ? -1 : 0;
 		}
 
 		static toInt (x: number) {
@@ -131,7 +156,49 @@ module spine {
 
 		static cbrt (x: number) {
 			var y = Math.pow(Math.abs(x), 1/3);
-  			return x < 0 ? -y : y;
+			return x < 0 ? -y : y;
+		}
+
+		static randomTriangular (min: number, max: number): number {
+			return MathUtils.randomTriangularWith(min, max, (min + max) * 0.5);
+		}
+
+		static randomTriangularWith (min: number, max: number, mode: number): number {
+			let u = Math.random();
+			let d = max - min;
+			if (u <= (mode - min) / d) return min + Math.sqrt(u * d * (mode - min));
+			return max - Math.sqrt((1 - u) * d * (max - mode));
+		}
+	}
+
+	export abstract class Interpolation {
+		protected abstract applyInternal (a: number): number;
+		apply(start: number, end: number, a: number): number {
+			return start + (end - start) * this.applyInternal(a);
+		}
+	}
+
+	export class Pow extends Interpolation {
+		protected power = 2;
+
+		constructor (power: number) {
+			super();
+			this.power = power;
+		}
+
+		applyInternal (a: number): number {
+			if (a <= 0.5) return Math.pow(a * 2, this.power) / 2;
+			return Math.pow((a - 1) * 2, this.power) / (this.power % 2 == 0 ? -2 : 2) + 1;
+		}
+	}
+
+	export class PowOut extends Pow {
+		constructor (power: number) {
+			super(power);
+		}
+
+		applyInternal (a: number) : number {
+			return Math.pow(a - 1, this.power) * (this.power % 2 == 0 ? -1 : 1) + 1;
 		}
 	}
 
@@ -154,6 +221,11 @@ module spine {
 			return array;
 		}
 
+		static ensureArrayCapacity<T> (array: Array<T>, size: number, value: any = 0): Array<T> {
+			if (array.length >= size) return array;
+			return Utils.setArraySize(array, size, value);
+		}
+
 		static newArray<T> (size: number, defaultValue: T): Array<T> {
 			let array = new Array<T>(size);
 			for (let i = 0; i < size; i++) array[i] = defaultValue;
@@ -170,8 +242,27 @@ module spine {
 			}
 		}
 
+		static newShortArray (size: number): ArrayLike<number> {
+			if (Utils.SUPPORTS_TYPED_ARRAYS) {
+				return new Int16Array(size)
+			} else {
+				 let array = new Array<number>(size);
+				 for (let i = 0; i < array.length; i++) array[i] = 0;
+				 return array;
+			}
+		}
+
 		static toFloatArray (array: Array<number>) {
 			return Utils.SUPPORTS_TYPED_ARRAYS ? new Float32Array(array) : array;
+		}
+
+		static toSinglePrecision (value: number) {
+			return Utils.SUPPORTS_TYPED_ARRAYS ? Math.fround(value) : value;
+		}
+
+		// This function is used to fix WebKit 602 specific issue described at http://esotericsoftware.com/forum/iOS-10-disappearing-graphics-10109
+		static webkit602BugfixHelper (alpha: number, pose: MixPose) {
+
 		}
 	}
 
@@ -197,11 +288,15 @@ module spine {
 		}
 
 		free (item: T) {
+			if ((item as any).reset) (item as any).reset();
 			this.items.push(item);
 		}
 
 		freeAll (items: ArrayLike<T>) {
-			for (let i = 0; i < items.length; i++) this.items[i] = items[i];
+			for (let i = 0; i < items.length; i++) {
+				if ((items[i] as any).reset) (items[i] as any).reset();
+				this.items[i] = items[i];
+			}
 		}
 
 		clear () {
@@ -236,7 +331,7 @@ module spine {
 	}
 
 	export class TimeKeeper {
-		maxDelta = 0.064;		
+		maxDelta = 0.064;
 		framesPerSecond = 0;
 		delta = 0;
 		totalTime = 0;
@@ -252,12 +347,57 @@ module spine {
 			this.totalTime += this.delta;
 			if (this.delta > this.maxDelta) this.delta = this.maxDelta;
 			this.lastTime = now;
-			
+
 			this.frameCount++;
 			if (this.frameTime > 1) {
 				this.framesPerSecond = this.frameCount / this.frameTime;
 				this.frameTime = 0;
 				this.frameCount = 0;
+			}
+		}
+	}
+
+	export interface ArrayLike<T> {
+		length: number;
+		[n: number]: T;
+	}
+
+	export class WindowedMean {
+		values: Array<number>;
+		addedValues = 0;
+		lastValue = 0;
+		mean = 0;
+		dirty = true;
+
+		constructor (windowSize: number = 32) {
+			this.values = new Array<number>(windowSize);
+		}
+
+		hasEnoughData () {
+			return this.addedValues >= this.values.length;
+		}
+
+		addValue (value: number) {
+			if (this.addedValues < this.values.length)
+				this.addedValues++;
+			this.values[this.lastValue++] = value;
+			if (this.lastValue > this.values.length - 1) this.lastValue = 0;
+			this.dirty = true;
+		}
+
+		getMean () {
+			if (this.hasEnoughData()) {
+				if (this.dirty) {
+					let mean = 0;
+					for (let i = 0; i < this.values.length; i++) {
+						mean += this.values[i];
+					}
+					this.mean = mean / this.values.length;
+					this.dirty = false;
+				}
+				return this.mean;
+			} else {
+				return 0;
 			}
 		}
 	}

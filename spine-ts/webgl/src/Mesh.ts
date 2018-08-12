@@ -1,10 +1,9 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.5
- * 
+ * Spine Runtimes Software License v2.5
+ *
  * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
+ *
  * You are granted a perpetual, non-exclusive, non-sublicensable, and
  * non-transferable license to use, install, execute, and perform the Spine
  * Runtimes software and derivative works solely for personal or internal
@@ -16,7 +15,7 @@
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -30,8 +29,8 @@
  *****************************************************************************/
 
 module spine.webgl {
-	export class Mesh implements Disposable {
-		private gl: WebGLRenderingContext;
+	export class Mesh implements Disposable, Restorable {
+		private context: ManagedWebGLRenderingContext;
 		private vertices:Float32Array;
 		private verticesBuffer: WebGLBuffer;
 		private verticesLength = 0;
@@ -60,14 +59,24 @@ module spine.webgl {
 		}
 		getIndices (): Uint16Array { return this.indices };
 
-		constructor (gl: WebGLRenderingContext, private attributes: VertexAttribute[], maxVertices: number, maxIndices: number) {
-			this.gl = gl;
+		getVertexSizeInFloats (): number {
+			let size = 0;
+			for (var i = 0; i < this.attributes.length; i++) {
+				let attribute = this.attributes[i];
+				size += attribute.numElements;
+			}
+			return size;
+		}
+
+		constructor (context: ManagedWebGLRenderingContext | WebGLRenderingContext, private attributes: VertexAttribute[], maxVertices: number, maxIndices: number) {
+			this.context = context instanceof ManagedWebGLRenderingContext? context : new ManagedWebGLRenderingContext(context);
 			this.elementsPerVertex = 0;
 			for (let i = 0; i < attributes.length; i++) {
 				this.elementsPerVertex += attributes[i].numElements;
 			}
 			this.vertices = new Float32Array(maxVertices * this.elementsPerVertex);
 			this.indices = new Uint16Array(maxIndices);
+			this.context.addRestorable(this);
 		}
 
 		setVertices (vertices: Array<number>) {
@@ -89,16 +98,19 @@ module spine.webgl {
 		}
 
 		drawWithOffset (shader: Shader, primitiveType: number, offset: number, count: number) {
-			let gl = this.gl;
+			let gl = this.context.gl;
 			if (this.dirtyVertices || this.dirtyIndices) this.update();
 			this.bind(shader);
-			if (this.indicesLength > 0) gl.drawElements(primitiveType, count, gl.UNSIGNED_SHORT, offset * 2);
-			else gl.drawArrays(primitiveType, offset, count);
+			if (this.indicesLength > 0) {
+				gl.drawElements(primitiveType, count, gl.UNSIGNED_SHORT, offset * 2);
+			} else {
+				gl.drawArrays(primitiveType, offset, count);
+			}
 			this.unbind(shader);
 		}
 
 		bind (shader: Shader) {
-			let gl = this.gl;
+			let gl = this.context.gl;
 			gl.bindBuffer(gl.ARRAY_BUFFER, this.verticesBuffer);
 			let offset = 0;
 			for (let i = 0; i < this.attributes.length; i++) {
@@ -112,7 +124,7 @@ module spine.webgl {
 		}
 
 		unbind (shader: Shader) {
-			let gl = this.gl;
+			let gl = this.context.gl;
 			for (let i = 0; i < this.attributes.length; i++) {
 				let attrib = this.attributes[i];
 				let location = shader.getAttributeLocation(attrib.name);
@@ -123,13 +135,13 @@ module spine.webgl {
 		}
 
 		private update () {
-			let gl = this.gl;
+			let gl = this.context.gl;
 			if (this.dirtyVertices) {
 				if (!this.verticesBuffer) {
 					this.verticesBuffer = gl.createBuffer();
 				}
 				gl.bindBuffer(gl.ARRAY_BUFFER, this.verticesBuffer);
-				gl.bufferData(gl.ARRAY_BUFFER, this.vertices.subarray(0, this.verticesLength), gl.STATIC_DRAW);
+				gl.bufferData(gl.ARRAY_BUFFER, this.vertices.subarray(0, this.verticesLength), gl.DYNAMIC_DRAW);
 				this.dirtyVertices = false;
 			}
 
@@ -138,13 +150,20 @@ module spine.webgl {
 					this.indicesBuffer = gl.createBuffer();
 				}
 				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indicesBuffer);
-				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.indices.subarray(0, this.indicesLength), gl.STATIC_DRAW);
+				gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.indices.subarray(0, this.indicesLength), gl.DYNAMIC_DRAW);
 				this.dirtyIndices = false;
 			}
 		}
 
+		restore () {
+			this.verticesBuffer = null;
+			this.indicesBuffer = null;
+			this.update();
+		}
+
 		dispose () {
-			let gl = this.gl;
+			this.context.removeRestorable(this);
+			let gl = this.context.gl;
 			gl.deleteBuffer(this.verticesBuffer);
 			gl.deleteBuffer(this.indicesBuffer);
 		}
@@ -175,6 +194,12 @@ module spine.webgl {
 	export class ColorAttribute extends VertexAttribute {
 		constructor () {
 			super(Shader.COLOR, VertexAttributeType.Float, 4);
+		}
+	}
+
+	export class Color2Attribute extends VertexAttribute {
+		constructor () {
+			super(Shader.COLOR2, VertexAttributeType.Float, 4);
 		}
 	}
 

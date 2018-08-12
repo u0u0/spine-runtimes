@@ -33,6 +33,7 @@ spine-cocos2dx/example/cocos2dx.zip
 spine-cocos2dx/example/__MACOSX
 spine-cocos2dx/example/cocos2d
 spine-cocos2dx/example/proj.win32/spine-cocos2d-x.VC.opendb
+spine-cocos2dx/example/proj.win32/spine-cocos2d-x.VC.db
 xcuserdata/
 
 spine-cocos2d-objc/cocos2d/*
@@ -44,25 +45,17 @@ spine-csharp/src/*.meta
 spine-csharp/src/*.cs.meta
 spine-csharp/src/Attachments/*.cs.meta
 
-spine-monogame/xamarinstudio-ios/src/bin
-spine-monogame/xamarinstudio-ios/src/obj
-spine-monogame/xamarinstudio-ios/src/packages
-
-spine-monogame/xamarinstudio-ios/example/bin
-spine-monogame/xamarinstudio-ios/example/obj
-spine-monogame/xamarinstudio-ios/example/packages
-
-spine-monogame/windows8-store/src/bin
-spine-monogame/windows8-store/src/obj
-
-spine-monogame/windows8-store/example/spine-monogame-example_TemporaryKey.pfx
-spine-monogame/windows8-store/example/obj/*
-spine-monogame/windows8-store/example/bin/*
+spine-monogame/example/bin
+spine-monogame/example/obj
+spine-monogame/example/Content/bin/
+spine-monogame/example/Content/obj/
 
 spine-xna/bin
 spine-xna/obj
 spine-xna/example/bin
 spine-xna/example/obj
+spine-xna/example-content/obj/
+spine-xna/.vs/
 
 spine-unity/Assets/spine-csharp*
 !spine-unity/Assets/spine-csharp/Place spine-csharp src here.*
@@ -104,3 +97,16 @@ spine-turbulenz/spine-js/spine.js
 spine-threejs/spine-js/spine.js
 
 spine-ts/.vscode/*
+
+spine-ue4/Binaries
+spine-ue4/Intermediate
+spine-ue4/Saved
+spine-ue4/SpineUE4.xcworkspace
+spine-ue4/Plugins/SpinePlugin/Source/SpinePlugin/Public/spine-c
+spine-ue4/Plugins/SpinePlugin/Binaries
+spine-ue4/SpineUE4.VC.opendb
+spine-ue4/SpineUE4.VC.db
+spine-ue4/SpineUE4.sln
+spine-ue4/SpineUE4.VC.db
+spine-ue4/.vs/
+spine-ue4/SpineUE4.VC.VC.opendb

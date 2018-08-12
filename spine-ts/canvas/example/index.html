@@ -17,6 +17,9 @@ var assetManager;
 var skeleton, state, bounds;
 var skeletonRenderer;
 
+var skelName = "spineboy-ess";
+var animName = "walk";
+
 function init () {
 	canvas = document.getElementById("canvas");
 	canvas.width = window.innerWidth;
@@ -29,21 +32,21 @@ function init () {
 	// enable the triangle renderer, supports meshes, but may produce artifacts in some browsers
 	skeletonRenderer.triangleRendering = false;
 
-	assetManager = new spine.canvas.AssetManager();	
+	assetManager = new spine.canvas.AssetManager();
 
-	assetManager.loadText("assets/spineboy.json");
-	assetManager.loadText("assets/spineboy.atlas");
-	assetManager.loadTexture("assets/spineboy.png");
+	assetManager.loadText("assets/" + skelName + ".json");
+	assetManager.loadText("assets/" + skelName.replace("-pro", "").replace("-ess", "") + ".atlas");
+	assetManager.loadTexture("assets/" + skelName.replace("-pro", "").replace("-ess", "") + ".png");
 
 	requestAnimationFrame(load);
 }
 
 function load () {
 	if (assetManager.isLoadingComplete()) {
-		var data = loadSkeleton("spineboy", "walk", "default");
+		var data = loadSkeleton(skelName, animName, "default");
 		skeleton = data.skeleton;
 		state = data.state;
-		bounds = data.bounds;	
+		bounds = data.bounds;
 		requestAnimationFrame(render);
 	} else {
 		requestAnimationFrame(load);
@@ -55,21 +58,21 @@ function loadSkeleton (name, initialAnimation, skin) {
 
 	// Load the texture atlas using name.atlas and name.png from the AssetManager.
 	// The function passed to TextureAtlas is used to resolve relative paths.
-	atlas = new spine.TextureAtlas(assetManager.get("assets/" + name + ".atlas"), function(path) {
-		return assetManager.get("assets/" + path);				
+	atlas = new spine.TextureAtlas(assetManager.get("assets/" + name.replace("-pro", "").replace("-ess", "") + ".atlas"), function(path) {
+		return assetManager.get("assets/" + path);
 	});
 
-	// Create a TextureAtlasAttachmentLoader, which is specific to the WebGL backend.
-	atlasLoader = new spine.TextureAtlasAttachmentLoader(atlas);
+	// Create a AtlasAttachmentLoader, which is specific to the WebGL backend.
+	atlasLoader = new spine.AtlasAttachmentLoader(atlas);
 
 	// Create a SkeletonJson instance for parsing the .json file.
 	var skeletonJson = new spine.SkeletonJson(atlasLoader);
-	
-	// Set the scale to apply during parsing, parse the file, and create a new skeleton.	
+
+	// Set the scale to apply during parsing, parse the file, and create a new skeleton.
 	var skeletonData = skeletonJson.readSkeletonData(assetManager.get("assets/" + name + ".json"));
 	var skeleton = new spine.Skeleton(skeletonData);
-	skeleton.flipY = true;		
-	var bounds = calculateBounds(skeleton);	
+	skeleton.flipY = true;
+	var bounds = calculateBounds(skeleton);
 	skeleton.setSkinByName(skin);
 
 	// Create an AnimationState, and set the initial animation in looping mode.
@@ -100,7 +103,7 @@ function calculateBounds(skeleton) {
 	skeleton.updateWorldTransform();
 	var offset = new spine.Vector2();
 	var size = new spine.Vector2();
-	skeleton.getBounds(offset, size);	
+	skeleton.getBounds(offset, size, []);
 	return { offset: offset, size: size };
 }
 
@@ -108,7 +111,7 @@ function render () {
 	var now = Date.now() / 1000;
 	var delta = now - lastFrameTime;
 	lastFrameTime = now;
-	
+
 	resize();
 
 	context.save();
@@ -119,15 +122,23 @@ function render () {
 
 	state.update(delta);
 	state.apply(skeleton);
-	skeleton.updateWorldTransform();		 			
-	skeletonRenderer.draw(skeleton);	
+	skeleton.updateWorldTransform();
+	skeletonRenderer.draw(skeleton);
+
+	context.strokeStyle = "green";
+	context.beginPath();
+	context.moveTo(-1000, 0);
+	context.lineTo(1000, 0);
+	context.moveTo(0, -1000);
+	context.lineTo(0, 1000);
+	context.stroke();
 
 	requestAnimationFrame(render);
 }
 
 function resize () {
 	var w = canvas.clientWidth;
-	var h = canvas.clientHeight;	
+	var h = canvas.clientHeight;
 	if (canvas.width != w || canvas.height != h) {
 		canvas.width = w;
 		canvas.height = h;
@@ -142,10 +153,10 @@ function resize () {
 	if (scale < 1) scale = 1;
 	var width = canvas.width * scale;
 	var height = canvas.height * scale;
-	
-	context.resetTransform();
+
+	context.setTransform(1, 0, 0, 1, 0, 0);
 	context.scale(1 / scale, 1 / scale);
-	context.translate(-centerX, -centerY);	
+	context.translate(-centerX, -centerY);
 	context.translate(width / 2, height / 2);
 }
 

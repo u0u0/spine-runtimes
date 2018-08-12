@@ -13,6 +13,8 @@
 <span>Skeleton:</span><select id="skeletonList"></select>
 <span>Animation:</span><select id="animationList"></select>
 <span>Skin:</span><select id="skinList"></select>
+<span>Vertex Effect:</span><select id="effectList"></select>
+<span>Debug:</span><input type="checkbox" id="debug">
 <div>
 </center>
 </body>
@@ -29,7 +31,10 @@ var skeletonRenderer;
 var debugRenderer;
 var shapes;
 var skeletons = {};
-var activeSkeleton = "stretchyman";
+var activeSkeleton = "spineboy";
+var swirlEffect = new spine.SwirlEffect(0);
+var jitterEffect = new spine.JitterEffect(20, 20);
+var swirlTime = 0;
 
 function init () {
 	// Setup canvas and WebGL context. We pass alpha: false to canvas.getContext() so we don't use premultiplied alpha when
@@ -38,55 +43,56 @@ function init () {
 	canvas.width = window.innerWidth;
 	canvas.height = window.innerHeight;
 	var config = { alpha: false };
-	gl = canvas.getContext("webgl", config) || canvas.getContext("experimental-webgl", config);	
-	
+	gl = canvas.getContext("webgl", config) || canvas.getContext("experimental-webgl", config);
+	if (!gl) {
+		alert('WebGL is unavailable.');
+		return;
+	}
+
 	// Create a simple shader, mesh, model-view-projection matrix and SkeletonRenderer.
-	shader = spine.webgl.Shader.newColoredTextured(gl);
+	shader = spine.webgl.Shader.newTwoColoredTextured(gl);
 	batcher = new spine.webgl.PolygonBatcher(gl);
 	mvp.ortho2d(0, 0, canvas.width - 1, canvas.height - 1);
 	skeletonRenderer = new spine.webgl.SkeletonRenderer(gl);
 	debugRenderer = new spine.webgl.SkeletonDebugRenderer(gl);
-	debugRenderer.drawRegionAttachments = false;
-	debugRenderer.drawBoundingBoxes = false;
-	debugRenderer.drawMeshHull = false;
-	debugRenderer.drawMeshTriangles = false;
-	debugRenderer.drawPaths = false;
+	debugRenderer.drawRegionAttachments = true;
+	debugRenderer.drawBoundingBoxes = true;
+	debugRenderer.drawMeshHull = true;
+	debugRenderer.drawMeshTriangles = true;
+	debugRenderer.drawPaths = true;
 	debugShader = spine.webgl.Shader.newColored(gl);
 	shapes = new spine.webgl.ShapeRenderer(gl);
 	assetManager = new spine.webgl.AssetManager(gl);
 
 	// Tell AssetManager to load the resources for each model, including the exported .json file, the .atlas file and the .png
 	// file for the atlas. We then wait until all resources are loaded in the load() method.
-	assetManager.loadText("assets/spineboy.json");
-	assetManager.loadText("assets/spineboy.atlas");
-	assetManager.loadTexture("assets/spineboy.png");
-	assetManager.loadText("assets/raptor.json");
-	assetManager.loadText("assets/raptor.atlas");
-	assetManager.loadTexture("assets/raptor.png");
-	assetManager.loadText("assets/tank.json");
-	assetManager.loadText("assets/tank.atlas");
-	assetManager.loadTexture("assets/tank.png");
-	assetManager.loadText("assets/goblins-mesh.json");
-	assetManager.loadText("assets/goblins-mesh.atlas");
-	assetManager.loadTexture("assets/goblins.png");
-	assetManager.loadText("assets/vine.json");
-	assetManager.loadText("assets/vine.atlas");
-	assetManager.loadTexture("assets/vine.png");	
-	assetManager.loadText("assets/stretchyman.json");
-	assetManager.loadText("assets/stretchyman.atlas");
-	assetManager.loadTexture("assets/stretchyman.png");
+	assetManager.loadText("assets/spineboy-ess.json");
+	assetManager.loadTextureAtlas("assets/spineboy.atlas");
+	assetManager.loadText("assets/raptor-pro.json");
+	assetManager.loadTextureAtlas("assets/raptor.atlas");
+	assetManager.loadText("assets/tank-pro.json");
+	assetManager.loadTextureAtlas("assets/tank.atlas");
+	assetManager.loadText("assets/goblins-pro.json");
+	assetManager.loadTextureAtlas("assets/goblins.atlas");
+	assetManager.loadText("assets/vine-pro.json");
+	assetManager.loadTextureAtlas("assets/vine.atlas");
+	assetManager.loadText("assets/stretchyman-pro.json");
+	assetManager.loadTextureAtlas("assets/stretchyman.atlas");
+	assetManager.loadText("assets/coin-pro.json");
+	assetManager.loadTextureAtlas("assets/coin.atlas");
 	requestAnimationFrame(load);
 }
 
 function load () {
 	// Wait until the AssetManager has loaded all resources, then load the skeletons.
 	if (assetManager.isLoadingComplete()) {
-		skeletons["spineboy"] = loadSkeleton("spineboy", "run", false);
-		skeletons["raptor"] = loadSkeleton("raptor", "walk", false);
-		skeletons["tank"] = loadSkeleton("tank", "drive", false);
-		skeletons["goblins"] = loadSkeleton("goblins-mesh", "walk", false, "goblin");
-		skeletons["vine"] = loadSkeleton("vine", "animation", false);
-		skeletons["stretchyman"] = loadSkeleton("stretchyman", "sneak", false);				
+		skeletons["raptor"] = loadSkeleton("raptor-pro", "walk", false);
+		skeletons["spineboy"] = loadSkeleton("spineboy-ess", "run", false);
+		skeletons["tank"] = loadSkeleton("tank-pro", "drive", false);
+		skeletons["goblins"] = loadSkeleton("goblins-pro", "walk", false, "goblin");
+		skeletons["vine"] = loadSkeleton("vine-pro", "grow", false);
+		skeletons["stretchyman"] = loadSkeleton("stretchyman-pro", "sneak", false);
+		skeletons["coin"] = loadSkeleton("coin-pro", "rotate", false);
 		setupUI();
 		requestAnimationFrame(render);
 	} else {
@@ -97,39 +103,51 @@ function load () {
 function loadSkeleton (name, initialAnimation, premultipliedAlpha, skin) {
 	if (skin === undefined) skin = "default";
 
-	// Load the texture atlas using name.atlas and name.png from the AssetManager.
-	// The function passed to TextureAtlas is used to resolve relative paths.
-	atlas = new spine.TextureAtlas(assetManager.get("assets/" + name + ".atlas"), function(path) {
-		return assetManager.get("assets/" + path);		
-	});
+	// Load the texture atlas using name.atlas from the AssetManager.
+	atlas = assetManager.get("assets/" + name.replace("-ess", "").replace("-pro", "") + ".atlas");
 
-	// Create a TextureAtlasAttachmentLoader that resolves region, mesh, boundingbox and path attachments
-	atlasLoader = new spine.TextureAtlasAttachmentLoader(atlas);
+	// Create a AtlasAttachmentLoader that resolves region, mesh, boundingbox and path attachments
+	atlasLoader = new spine.AtlasAttachmentLoader(atlas);
 
 	// Create a SkeletonJson instance for parsing the .json file.
 	var skeletonJson = new spine.SkeletonJson(atlasLoader);
-	
-	// Set the scale to apply during parsing, parse the file, and create a new skeleton.	
+
+	// Set the scale to apply during parsing, parse the file, and create a new skeleton.
 	var skeletonData = skeletonJson.readSkeletonData(assetManager.get("assets/" + name + ".json"));
 	var skeleton = new spine.Skeleton(skeletonData);
 	skeleton.setSkinByName(skin);
-	var bounds = calculateBounds(skeleton);	
+	var bounds = calculateBounds(skeleton);
 
 	// Create an AnimationState, and set the initial animation in looping mode.
-	var animationState = new spine.AnimationState(new spine.AnimationStateData(skeleton.data));
-	animationState.setAnimation(0, initialAnimation, true);
+	animationStateData = new spine.AnimationStateData(skeleton.data);
+	var animationState = new spine.AnimationState(animationStateData);
+	if (name == "spineboy") {
+		animationStateData.setMix("walk", "jump", 0.4)
+		animationStateData.setMix("jump", "run", 0.4);
+		animationState.setAnimation(0, "walk", true);
+		var jumpEntry = animationState.addAnimation(0, "jump", false, 3);
+		animationState.addAnimation(0, "run", true, 0);
+	} else {
+		animationState.setAnimation(0, initialAnimation, true);
+	}
 	animationState.addListener({
-		event: function(trackIndex, event) {
-			// console.log("Event on track " + trackIndex + ": " + JSON.stringify(event));
+		start: function(track) {
+			console.log("Animation on track " + track.trackIndex + " started");
 		},
-		complete: function(trackIndex, loopCount) {
-			// console.log("Animation on track " + trackIndex + " completed, loop count: " + loopCount);
+		interrupt: function(track) {
+			console.log("Animation on track " + track.trackIndex + " interrupted");
 		},
-		start: function(trackIndex) {
-			// console.log("Animation on track " + trackIndex + " started");
+		end: function(track) {
+			console.log("Animation on track " + track.trackIndex + " ended");
 		},
-		end: function(trackIndex) {
-			// console.log("Animation on track " + trackIndex + " ended");
+		disposed: function(track) {
+			console.log("Animation on track " + track.trackIndex + " disposed");
+		},
+		complete: function(track) {
+			console.log("Animation on track " + track.trackIndex + " completed");
+		},
+		event: function(track, event) {
+			console.log("Event on track " + track.trackIndex + ": " + JSON.stringify(event));
 		}
 	})
 
@@ -137,12 +155,12 @@ function loadSkeleton (name, initialAnimation, premultipliedAlpha, skin) {
 	return { skeleton: skeleton, state: animationState, bounds: bounds, premultipliedAlpha: premultipliedAlpha };
 }
 
-function calculateBounds(skeleton) {	
+function calculateBounds(skeleton) {
 	skeleton.setToSetupPose();
 	skeleton.updateWorldTransform();
 	var offset = new spine.Vector2();
 	var size = new spine.Vector2();
-	skeleton.getBounds(offset, size);
+	skeleton.getBounds(offset, size, []);
 	return { offset: offset, size: size };
 }
 
@@ -153,6 +171,14 @@ function setupUI () {
 		option.attr("value", skeletonName).text(skeletonName);
 		if (skeletonName === activeSkeleton) option.attr("selected", "selected");
 		skeletonList.append(option);
+	}
+	var effectList = $("#effectList");
+	var effects = ["None", "Swirl", "Jitter"];
+	for (var effect in effects) {
+		var effectName = effects[effect];
+		var option = $("<option></option>");
+		option.attr("value", effectName).text(effectName);
+		effectList.append(option);
 	}
 	var setupAnimationUI = function() {
 		var animationList = $("#animationList");
@@ -173,7 +199,7 @@ function setupUI () {
 			var skeleton = skeletons[activeSkeleton].skeleton;
 			var animationName = $("#animationList option:selected").text();
 			skeleton.setToSetupPose();
-			state.setAnimation(0, animationName, true);			
+			state.setAnimation(0, animationName, true);
 		})
 	}
 
@@ -190,7 +216,7 @@ function setupUI () {
 			skinList.append(option);
 		}
 
-		skinList.change(function() {			
+		skinList.change(function() {
 			var skeleton = skeletons[activeSkeleton].skeleton;
 			var skinName = $("#skinList option:selected").text();
 			skeleton.setSkinByName(skinName);
@@ -221,6 +247,7 @@ function render () {
 	// Apply the animation state based on the delta time.
 	var state = skeletons[activeSkeleton].state;
 	var skeleton = skeletons[activeSkeleton].skeleton;
+	var bounds = skeletons[activeSkeleton].bounds;
 	var premultipliedAlpha = skeletons[activeSkeleton].premultipliedAlpha;
 	state.update(delta);
 	state.apply(skeleton);
@@ -233,20 +260,41 @@ function render () {
 
 	// Start the batch and tell the SkeletonRenderer to render the active skeleton.
 	batcher.begin(shader);
+
+	var effect = $("#effectList option:selected").text();
+	if (effect == "None") {
+		skeletonRenderer.vertexEffect = null;
+	} else if (effect == "Swirl") {
+		swirlTime += delta;
+		var percent = swirlTime % 2;
+		if (percent > 1) percent = 1 - (percent -1 );
+		// swirlEffect.angle = -60 + 120 * (perecent < 0.5 ? Math.pow(percent * 2, 2) / 2 : Math.pow((percent - 1) * 2, 2) / -2 + 1);
+		swirlEffect.angle = 360 * percent;
+		swirlEffect.centerX = 200; //bounds.offset.x + bounds.size.x / 2
+		swirlEffect.centerY = 200; //bounds.offset.y + bounds.size.y / 2
+		swirlEffect.radius = Math.sqrt(bounds.size.x * bounds.size.x + bounds.size.y * bounds.size.y);
+		skeletonRenderer.vertexEffect = swirlEffect;
+	} else if (effect == "Jitter") {
+		skeletonRenderer.vertexEffect = jitterEffect;
+	}
+
 	skeletonRenderer.premultipliedAlpha = premultipliedAlpha;
 	skeletonRenderer.draw(batcher, skeleton);
 	batcher.end();
-		
+
 	shader.unbind();
 
 	// draw debug information
-	debugShader.bind();
-	debugShader.setUniform4x4f(spine.webgl.Shader.MVP_MATRIX, mvp.values);
-	debugRenderer.premultipliedAlpha = premultipliedAlpha;
-	shapes.begin(debugShader);
-	debugRenderer.draw(shapes, skeleton);
-	shapes.end();
-	debugShader.unbind();
+	var debug = $('#debug').is(':checked');
+	if (debug) {
+		debugShader.bind();
+		debugShader.setUniform4x4f(spine.webgl.Shader.MVP_MATRIX, mvp.values);
+		debugRenderer.premultipliedAlpha = premultipliedAlpha;
+		shapes.begin(debugShader);
+		debugRenderer.draw(shapes, skeleton);
+		shapes.end();
+		debugShader.unbind();
+	}
 
 	requestAnimationFrame(render);
 }

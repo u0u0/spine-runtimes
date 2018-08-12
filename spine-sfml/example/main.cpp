@@ -1,32 +1,31 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.3
- * 
- * Copyright (c) 2013-2015, Esoteric Software
+ * Spine Runtimes Software License v2.5
+ *
+ * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
- * You are granted a perpetual, non-exclusive, non-sublicensable and
- * non-transferable license to use, install, execute and perform the Spine
- * Runtimes Software (the "Software") and derivative works solely for personal
- * or internal use. Without the written permission of Esoteric Software (see
- * Section 2 of the Spine Software License Agreement), you may not (a) modify,
- * translate, adapt or otherwise create derivative works, improvements of the
- * Software or develop new applications using the Software or (b) remove,
- * delete, alter or obscure any trademarks or any copyright, trademark, patent
+ *
+ * You are granted a perpetual, non-exclusive, non-sublicensable, and
+ * non-transferable license to use, install, execute, and perform the Spine
+ * Runtimes software and derivative works solely for personal or internal
+ * use. Without the written permission of Esoteric Software (see Section 2 of
+ * the Spine Software License Agreement), you may not (a) modify, translate,
+ * adapt, or develop new applications using the Spine Runtimes or otherwise
+ * create derivative works or improvements of the Spine Runtimes or (b) remove,
+ * delete, alter, or obscure any trademarks or any copyright, trademark, patent,
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
  * EVENT SHALL ESOTERIC SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, BUSINESS INTERRUPTION, OR LOSS OF
+ * USE, DATA, OR PROFITS) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 #include <iostream>
@@ -40,22 +39,27 @@ using namespace spine;
 #include <stdio.h>
 #include <stdlib.h>
 
-void callback (AnimationState* state, int trackIndex, EventType type, Event* event, int loopCount) {
-	TrackEntry* entry = AnimationState_getCurrent(state, trackIndex);
+void callback (AnimationState* state, EventType type, TrackEntry* entry, Event* event) {
 	const char* animationName = (entry && entry->animation) ? entry->animation->name : 0;
 
 	switch (type) {
 	case ANIMATION_START:
-		printf("%d start: %s\n", trackIndex, animationName);
+		printf("%d start: %s\n", entry->trackIndex, animationName);
+		break;
+	case ANIMATION_INTERRUPT:
+		printf("%d interrupt: %s\n", entry->trackIndex, animationName);
 		break;
 	case ANIMATION_END:
-		printf("%d end: %s\n", trackIndex, animationName);
+		printf("%d end: %s\n", entry->trackIndex, animationName);
 		break;
 	case ANIMATION_COMPLETE:
-		printf("%d complete: %s, %d\n", trackIndex, animationName, loopCount);
+		printf("%d complete: %s\n", entry->trackIndex, animationName);
+		break;
+	case ANIMATION_DISPOSE:
+		printf("%d dispose: %s\n", entry->trackIndex, animationName);
 		break;
 	case ANIMATION_EVENT:
-		printf("%d event: %s, %s: %d, %f, %s\n", trackIndex, animationName, event->data->name, event->intValue, event->floatValue,
+		printf("%d event: %s, %s: %d, %f, %s\n", entry->trackIndex, animationName, event->data->name, event->intValue, event->floatValue,
 				event->stringValue);
 		break;
 	}
@@ -125,7 +129,6 @@ void spineboy (SkeletonData* skeletonData, Atlas* atlas) {
 	Slot* headSlot = Skeleton_findSlot(skeleton, "head");
 
 	drawable->state->listener = callback;
-	AnimationState_setAnimationByName(drawable->state, 0, "test", true);
 	AnimationState_addAnimationByName(drawable->state, 0, "walk", true, 0);
 	AnimationState_addAnimationByName(drawable->state, 0, "jump", false, 3);
 	AnimationState_addAnimationByName(drawable->state, 0, "run", true, 0);
@@ -144,11 +147,11 @@ void spineboy (SkeletonData* skeletonData, Atlas* atlas) {
 		SkeletonBounds_update(bounds, skeleton, true);
 		sf::Vector2i position = sf::Mouse::getPosition(window);
 		if (SkeletonBounds_containsPoint(bounds, position.x, position.y)) {
-			headSlot->g = 0;
-			headSlot->b = 0;
+			headSlot->color.g = 0;
+			headSlot->color.b = 0;
 		} else {
-			headSlot->g = 1;
-			headSlot->b = 1;
+			headSlot->color.g = 1;
+			headSlot->color.b = 1;
 		}
 
 		drawable->update(delta);
@@ -201,18 +204,23 @@ void raptor (SkeletonData* skeletonData, Atlas* atlas) {
 	SkeletonDrawable* drawable = new SkeletonDrawable(skeletonData);
 	drawable->timeScale = 1;
 
+	spSwirlVertexEffect* effect = spSwirlVertexEffect_create(400);
+	effect->centerY = -200;
+	drawable->vertexEffect = &effect->super;
+
 	Skeleton* skeleton = drawable->skeleton;
 	skeleton->x = 320;
 	skeleton->y = 590;
 	Skeleton_updateWorldTransform(skeleton);
 
 	AnimationState_setAnimationByName(drawable->state, 0, "walk", true);
-	AnimationState_addAnimationByName(drawable->state, 1, "gungrab", false, 2);
+	AnimationState_addAnimationByName(drawable->state, 1, "gun-grab", false, 2);
 
 	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - raptor");
 	window.setFramerateLimit(60);
 	sf::Event event;
 	sf::Clock deltaClock;
+	float swirlTime = 0;
 	while (window.isOpen()) {
 		while (window.pollEvent(event))
 			if (event.type == sf::Event::Closed) window.close();
@@ -220,12 +228,18 @@ void raptor (SkeletonData* skeletonData, Atlas* atlas) {
 		float delta = deltaClock.getElapsedTime().asSeconds();
 		deltaClock.restart();
 
+		swirlTime += delta;
+		float percent = fmod(swirlTime, 2);
+		if (percent > 1) percent = 1 - (percent - 1);
+		effect->angle = _spMath_interpolate(_spMath_pow2_apply, -60, 60, percent);
+
 		drawable->update(delta);
 
 		window.clear();
 		window.draw(*drawable);
 		window.display();
 	}
+	spSwirlVertexEffect_dispose(effect);
 }
 
 void tank (SkeletonData* skeletonData, Atlas* atlas) {
@@ -266,7 +280,7 @@ void vine (SkeletonData* skeletonData, Atlas* atlas) {
 	skeleton->y = 590;
 	Skeleton_updateWorldTransform(skeleton);
 
-	AnimationState_setAnimationByName(drawable->state, 0, "animation", true);
+	AnimationState_setAnimationByName(drawable->state, 0, "grow", true);
 
 	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - vine");
 	window.setFramerateLimit(60);
@@ -295,7 +309,7 @@ void stretchyman (SkeletonData* skeletonData, Atlas* atlas) {
 	skeleton->flipX = false;
 	skeleton->flipY = false;
 
-	skeleton->x = 320;
+	skeleton->x = 100;
 	skeleton->y = 590;
 	Skeleton_updateWorldTransform(skeleton);
 
@@ -305,6 +319,37 @@ void stretchyman (SkeletonData* skeletonData, Atlas* atlas) {
 	window.setFramerateLimit(60);
 	sf::Event event;
 	sf::Clock deltaClock;
+	while (window.isOpen()) {
+		while (window.pollEvent(event))
+			if (event.type == sf::Event::Closed) window.close();
+
+		float delta = deltaClock.getElapsedTime().asSeconds();
+		deltaClock.restart();
+
+		drawable->update(delta);
+
+		window.clear();
+		window.draw(*drawable);
+		window.display();
+	}
+}
+
+void coin (SkeletonData* skeletonData, Atlas* atlas) {
+	SkeletonDrawable* drawable = new SkeletonDrawable(skeletonData);
+	drawable->timeScale = 1;
+
+	Skeleton* skeleton = drawable->skeleton;
+	skeleton->x = 320;
+	skeleton->y = 590;
+	Skeleton_updateWorldTransform(skeleton);
+
+	AnimationState_setAnimationByName(drawable->state, 0, "rotate", true);
+
+	sf::RenderWindow window(sf::VideoMode(640, 640), "Spine SFML - vine");
+	window.setFramerateLimit(60);
+	sf::Event event;
+	sf::Clock deltaClock;
+	float swirlTime = 0;
 	while (window.isOpen()) {
 		while (window.pollEvent(event))
 			if (event.type == sf::Event::Closed) window.close();
@@ -348,12 +393,13 @@ void test (SkeletonData* skeletonData, Atlas* atlas) {
 }
 
 int main () {
-	testcase(test, "data/tank.json", "data/tank.skel", "data/tank.atlas", 1.0f);
-	testcase(vine, "data/vine.json", "data/vine.skel", "data/vine.atlas", 0.5f);
-	testcase(tank, "data/tank.json", "data/tank.skel", "data/tank.atlas", 0.2f);
-	testcase(raptor, "data/raptor.json", "data/raptor.skel", "data/raptor.atlas", 0.5f);
-	testcase(spineboy, "data/spineboy.json", "data/spineboy.skel", "data/spineboy.atlas", 0.6f);
-	testcase(goblins, "data/goblins-mesh.json", "data/goblins-mesh.skel", "data/goblins.atlas", 1.4f);
-	testcase(stretchyman, "data/stretchyman.json", "data/stretchyman.skel", "data/stretchyman.atlas", 1.4f);
+	testcase(test, "data/tank-pro.json", "data/tank-pro.skel", "data/tank.atlas", 1.0f);
+	testcase(coin, "data/coin-pro.json", "data/coin-pro.skel", "data/coin.atlas", 0.5f);
+	testcase(vine, "data/vine-pro.json", "data/vine-pro.skel", "data/vine.atlas", 0.5f);
+	testcase(tank, "data/tank-pro.json", "data/tank-pro.skel", "data/tank.atlas", 0.2f);
+	testcase(raptor, "data/raptor-pro.json", "data/raptor-pro.skel", "data/raptor.atlas", 0.5f);
+	testcase(spineboy, "data/spineboy-ess.json", "data/spineboy-ess.skel", "data/spineboy.atlas", 0.6f);
+	testcase(goblins, "data/goblins-pro.json", "data/goblins-pro.skel", "data/goblins.atlas", 1.4f);
+	testcase(stretchyman, "data/stretchyman-pro.json", "data/stretchyman-pro.skel", "data/stretchyman.atlas", 0.6f);
 	return 0;
 }

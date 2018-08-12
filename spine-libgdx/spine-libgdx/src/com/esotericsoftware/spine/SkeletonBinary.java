@@ -1,32 +1,31 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.3
- * 
- * Copyright (c) 2013-2015, Esoteric Software
+ * Spine Runtimes Software License v2.5
+ *
+ * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
- * You are granted a perpetual, non-exclusive, non-sublicensable and
- * non-transferable license to use, install, execute and perform the Spine
- * Runtimes Software (the "Software") and derivative works solely for personal
- * or internal use. Without the written permission of Esoteric Software (see
- * Section 2 of the Spine Software License Agreement), you may not (a) modify,
- * translate, adapt or otherwise create derivative works, improvements of the
- * Software or develop new applications using the Software or (b) remove,
- * delete, alter or obscure any trademarks or any copyright, trademark, patent
+ *
+ * You are granted a perpetual, non-exclusive, non-sublicensable, and
+ * non-transferable license to use, install, execute, and perform the Spine
+ * Runtimes software and derivative works solely for personal or internal
+ * use. Without the written permission of Esoteric Software (see Section 2 of
+ * the Spine Software License Agreement), you may not (a) modify, translate,
+ * adapt, or develop new applications using the Spine Runtimes or otherwise
+ * create derivative works or improvements of the Spine Runtimes or (b) remove,
+ * delete, alter, or obscure any trademarks or any copyright, trademark, patent,
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
  * EVENT SHALL ESOTERIC SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, BUSINESS INTERRUPTION, OR LOSS OF
+ * USE, DATA, OR PROFITS) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 package com.esotericsoftware.spine;
@@ -58,6 +57,8 @@ import com.esotericsoftware.spine.Animation.ShearTimeline;
 import com.esotericsoftware.spine.Animation.Timeline;
 import com.esotericsoftware.spine.Animation.TransformConstraintTimeline;
 import com.esotericsoftware.spine.Animation.TranslateTimeline;
+import com.esotericsoftware.spine.Animation.TwoColorTimeline;
+import com.esotericsoftware.spine.BoneData.TransformMode;
 import com.esotericsoftware.spine.PathConstraintData.PositionMode;
 import com.esotericsoftware.spine.PathConstraintData.RotateMode;
 import com.esotericsoftware.spine.PathConstraintData.SpacingMode;
@@ -67,11 +68,18 @@ import com.esotericsoftware.spine.attachments.Attachment;
 import com.esotericsoftware.spine.attachments.AttachmentLoader;
 import com.esotericsoftware.spine.attachments.AttachmentType;
 import com.esotericsoftware.spine.attachments.BoundingBoxAttachment;
+import com.esotericsoftware.spine.attachments.ClippingAttachment;
 import com.esotericsoftware.spine.attachments.MeshAttachment;
 import com.esotericsoftware.spine.attachments.PathAttachment;
+import com.esotericsoftware.spine.attachments.PointAttachment;
 import com.esotericsoftware.spine.attachments.RegionAttachment;
 import com.esotericsoftware.spine.attachments.VertexAttachment;
 
+/** Loads skeleton data in the Spine binary format.
+ * <p>
+ * See <a href="http://esotericsoftware.com/spine-binary-format">Spine binary format</a> and
+ * <a href="http://esotericsoftware.com/spine-loading-skeleton-data#JSON-and-binary-data">JSON and binary data</a> in the Spine
+ * Runtimes Guide. */
 public class SkeletonBinary {
 	static public final int BONE_ROTATE = 0;
 	static public final int BONE_TRANSLATE = 1;
@@ -80,6 +88,7 @@ public class SkeletonBinary {
 
 	static public final int SLOT_ATTACHMENT = 0;
 	static public final int SLOT_COLOR = 1;
+	static public final int SLOT_TWO_COLOR = 2;
 
 	static public final int PATH_POSITION = 0;
 	static public final int PATH_SPACING = 1;
@@ -89,7 +98,7 @@ public class SkeletonBinary {
 	static public final int CURVE_STEPPED = 1;
 	static public final int CURVE_BEZIER = 2;
 
-	static private final Color tempColor = new Color();
+	static private final Color tempColor1 = new Color(), tempColor2 = new Color();
 
 	private final AttachmentLoader attachmentLoader;
 	private float scale = 1;
@@ -104,11 +113,14 @@ public class SkeletonBinary {
 		this.attachmentLoader = attachmentLoader;
 	}
 
+	/** Scales bone positions, image sizes, and translations as they are loaded. This allows different size images to be used at
+	 * runtime than were used in Spine.
+	 * <p>
+	 * See <a href="http://esotericsoftware.com/spine-loading-skeleton-data#Scaling">Scaling</a> in the Spine Runtimes Guide. */
 	public float getScale () {
 		return scale;
 	}
 
-	/** Scales the bones, images, and animations as they are loaded. */
 	public void setScale (float scale) {
 		this.scale = scale;
 	}
@@ -169,6 +181,7 @@ public class SkeletonBinary {
 			boolean nonessential = input.readBoolean();
 
 			if (nonessential) {
+				skeletonData.fps = input.readFloat();
 				skeletonData.imagesPath = input.readString();
 				if (skeletonData.imagesPath.isEmpty()) skeletonData.imagesPath = null;
 			}
@@ -186,8 +199,7 @@ public class SkeletonBinary {
 				data.shearX = input.readFloat();
 				data.shearY = input.readFloat();
 				data.length = input.readFloat() * scale;
-				data.inheritRotation = input.readBoolean();
-				data.inheritScale = input.readBoolean();
+				data.transformMode = TransformMode.values[input.readInt(true)];
 				if (nonessential) Color.rgba8888ToColor(data.color, input.readInt());
 				skeletonData.bones.add(data);
 			}
@@ -198,6 +210,10 @@ public class SkeletonBinary {
 				BoneData boneData = skeletonData.bones.get(input.readInt(true));
 				SlotData data = new SlotData(i, slotName, boneData);
 				Color.rgba8888ToColor(data.color, input.readInt());
+
+				int darkColor = input.readInt();
+				if (darkColor != -1) Color.rgb888ToColor(data.darkColor = new Color(), darkColor);
+
 				data.attachmentName = input.readString();
 				data.blendMode = BlendMode.values[input.readInt(true)];
 				skeletonData.slots.add(data);
@@ -206,6 +222,7 @@ public class SkeletonBinary {
 			// IK constraints.
 			for (int i = 0, n = input.readInt(true); i < n; i++) {
 				IkConstraintData data = new IkConstraintData(input.readString());
+				data.order = input.readInt(true);
 				for (int ii = 0, nn = input.readInt(true); ii < nn; ii++)
 					data.bones.add(skeletonData.bones.get(input.readInt(true)));
 				data.target = skeletonData.bones.get(input.readInt(true));
@@ -217,9 +234,12 @@ public class SkeletonBinary {
 			// Transform constraints.
 			for (int i = 0, n = input.readInt(true); i < n; i++) {
 				TransformConstraintData data = new TransformConstraintData(input.readString());
+				data.order = input.readInt(true);
 				for (int ii = 0, nn = input.readInt(true); ii < nn; ii++)
 					data.bones.add(skeletonData.bones.get(input.readInt(true)));
 				data.target = skeletonData.bones.get(input.readInt(true));
+				data.local = input.readBoolean();
+				data.relative = input.readBoolean();
 				data.offsetRotation = input.readFloat();
 				data.offsetX = input.readFloat() * scale;
 				data.offsetY = input.readFloat() * scale;
@@ -236,6 +256,7 @@ public class SkeletonBinary {
 			// Path constraints.
 			for (int i = 0, n = input.readInt(true); i < n; i++) {
 				PathConstraintData data = new PathConstraintData(input.readString());
+				data.order = input.readInt(true);
 				for (int ii = 0, nn = input.readInt(true); ii < nn; ii++)
 					data.bones.add(skeletonData.bones.get(input.readInt(true)));
 				data.target = skeletonData.slots.get(input.readInt(true));
@@ -253,7 +274,7 @@ public class SkeletonBinary {
 			}
 
 			// Default skin.
-			Skin defaultSkin = readSkin(input, "default", nonessential);
+			Skin defaultSkin = readSkin(input, skeletonData, "default", nonessential);
 			if (defaultSkin != null) {
 				skeletonData.defaultSkin = defaultSkin;
 				skeletonData.skins.add(defaultSkin);
@@ -261,7 +282,7 @@ public class SkeletonBinary {
 
 			// Skins.
 			for (int i = 0, n = input.readInt(true); i < n; i++)
-				skeletonData.skins.add(readSkin(input, input.readString(), nonessential));
+				skeletonData.skins.add(readSkin(input, skeletonData, input.readString(), nonessential));
 
 			// Linked meshes.
 			for (int i = 0, n = linkedMeshes.size; i < n; i++) {
@@ -286,7 +307,7 @@ public class SkeletonBinary {
 
 			// Animations.
 			for (int i = 0, n = input.readInt(true); i < n; i++)
-				readAnimation(input.readString(), input, skeletonData);
+				readAnimation(input, input.readString(), skeletonData);
 
 		} catch (IOException ex) {
 			throw new SerializationException("Error reading skeleton file.", ex);
@@ -307,7 +328,7 @@ public class SkeletonBinary {
 	}
 
 	/** @return May be null. */
-	private Skin readSkin (DataInput input, String skinName, boolean nonessential) throws IOException {
+	private Skin readSkin (DataInput input, SkeletonData skeletonData, String skinName, boolean nonessential) throws IOException {
 		int slotCount = input.readInt(true);
 		if (slotCount == 0) return null;
 		Skin skin = new Skin(skinName);
@@ -315,14 +336,15 @@ public class SkeletonBinary {
 			int slotIndex = input.readInt(true);
 			for (int ii = 0, nn = input.readInt(true); ii < nn; ii++) {
 				String name = input.readString();
-				skin.addAttachment(slotIndex, name, readAttachment(input, skin, slotIndex, name, nonessential));
+				Attachment attachment = readAttachment(input, skeletonData, skin, slotIndex, name, nonessential);
+				if (attachment != null) skin.addAttachment(slotIndex, name, attachment);
 			}
 		}
 		return skin;
 	}
 
-	private Attachment readAttachment (DataInput input, Skin skin, int slotIndex, String attachmentName, boolean nonessential)
-		throws IOException {
+	private Attachment readAttachment (DataInput input, SkeletonData skeletonData, Skin skin, int slotIndex, String attachmentName,
+		boolean nonessential) throws IOException {
 		float scale = this.scale;
 
 		String name = input.readString();
@@ -450,6 +472,35 @@ public class SkeletonBinary {
 			if (nonessential) Color.rgba8888ToColor(path.getColor(), color);
 			return path;
 		}
+		case point: {
+			float rotation = input.readFloat();
+			float x = input.readFloat();
+			float y = input.readFloat();
+			int color = nonessential ? input.readInt() : 0;
+
+			PointAttachment point = attachmentLoader.newPointAttachment(skin, name);
+			if (point == null) return null;
+			point.setX(x * scale);
+			point.setY(y * scale);
+			point.setRotation(rotation);
+			if (nonessential) Color.rgba8888ToColor(point.getColor(), color);
+			return point;
+		}
+		case clipping: {
+			int endSlotIndex = input.readInt(true);
+			int vertexCount = input.readInt(true);
+			Vertices vertices = readVertices(input, vertexCount);
+			int color = nonessential ? input.readInt() : 0;
+
+			ClippingAttachment clip = attachmentLoader.newClippingAttachment(skin, name);
+			if (clip == null) return null;
+			clip.setEndSlot(skeletonData.slots.get(endSlotIndex));
+			clip.setWorldVerticesLength(vertexCount << 1);
+			clip.setVertices(vertices.vertices);
+			clip.setBones(vertices.bones);
+			if (nonessential) Color.rgba8888ToColor(clip.getColor(), color);
+			return clip;
+		}
 		}
 		return null;
 	}
@@ -498,7 +549,7 @@ public class SkeletonBinary {
 		return array;
 	}
 
-	private void readAnimation (String name, DataInput input, SkeletonData skeletonData) {
+	private void readAnimation (DataInput input, String name, SkeletonData skeletonData) {
 		Array<Timeline> timelines = new Array();
 		float scale = this.scale;
 		float duration = 0;
@@ -511,20 +562,7 @@ public class SkeletonBinary {
 					int timelineType = input.readByte();
 					int frameCount = input.readInt(true);
 					switch (timelineType) {
-					case SLOT_COLOR: {
-						ColorTimeline timeline = new ColorTimeline(frameCount);
-						timeline.slotIndex = slotIndex;
-						for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-							float time = input.readFloat();
-							Color.rgba8888ToColor(tempColor, input.readInt());
-							timeline.setFrame(frameIndex, time, tempColor.r, tempColor.g, tempColor.b, tempColor.a);
-							if (frameIndex < frameCount - 1) readCurve(input, frameIndex, timeline);
-						}
-						timelines.add(timeline);
-						duration = Math.max(duration, timeline.getFrames()[(frameCount - 1) * ColorTimeline.ENTRIES]);
-						break;
-					}
-					case SLOT_ATTACHMENT:
+					case SLOT_ATTACHMENT: {
 						AttachmentTimeline timeline = new AttachmentTimeline(frameCount);
 						timeline.slotIndex = slotIndex;
 						for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
@@ -532,6 +570,35 @@ public class SkeletonBinary {
 						timelines.add(timeline);
 						duration = Math.max(duration, timeline.getFrames()[frameCount - 1]);
 						break;
+					}
+					case SLOT_COLOR: {
+						ColorTimeline timeline = new ColorTimeline(frameCount);
+						timeline.slotIndex = slotIndex;
+						for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+							float time = input.readFloat();
+							Color.rgba8888ToColor(tempColor1, input.readInt());
+							timeline.setFrame(frameIndex, time, tempColor1.r, tempColor1.g, tempColor1.b, tempColor1.a);
+							if (frameIndex < frameCount - 1) readCurve(input, frameIndex, timeline);
+						}
+						timelines.add(timeline);
+						duration = Math.max(duration, timeline.getFrames()[(frameCount - 1) * ColorTimeline.ENTRIES]);
+						break;
+					}
+					case SLOT_TWO_COLOR: {
+						TwoColorTimeline timeline = new TwoColorTimeline(frameCount);
+						timeline.slotIndex = slotIndex;
+						for (int frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+							float time = input.readFloat();
+							Color.rgba8888ToColor(tempColor1, input.readInt());
+							Color.rgb888ToColor(tempColor2, input.readInt());
+							timeline.setFrame(frameIndex, time, tempColor1.r, tempColor1.g, tempColor1.b, tempColor1.a, tempColor2.r,
+								tempColor2.g, tempColor2.b);
+							if (frameIndex < frameCount - 1) readCurve(input, frameIndex, timeline);
+						}
+						timelines.add(timeline);
+						duration = Math.max(duration, timeline.getFrames()[(frameCount - 1) * TwoColorTimeline.ENTRIES]);
+						break;
+					}
 					}
 				}
 			}
@@ -613,7 +680,7 @@ public class SkeletonBinary {
 			// Path constraint timelines.
 			for (int i = 0, n = input.readInt(true); i < n; i++) {
 				int index = input.readInt(true);
-				PathConstraintData data = skeletonData.getPathConstraints().get(index);
+				PathConstraintData data = skeletonData.pathConstraints.get(index);
 				for (int ii = 0, nn = input.readInt(true); ii < nn; ii++) {
 					int timelineType = input.readByte();
 					int frameCount = input.readInt(true);

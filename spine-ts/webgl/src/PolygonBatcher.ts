@@ -1,10 +1,9 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.5
- * 
+ * Spine Runtimes Software License v2.5
+ *
  * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
+ *
  * You are granted a perpetual, non-exclusive, non-sublicensable, and
  * non-transferable license to use, install, execute, and perform the Spine
  * Runtimes software and derivative works solely for personal or internal
@@ -16,7 +15,7 @@
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -31,25 +30,30 @@
 
 module spine.webgl {
 	export class PolygonBatcher implements Disposable {
-		private gl: WebGLRenderingContext;
+		private context: ManagedWebGLRenderingContext;
 		private drawCalls: number;
 		private isDrawing = false;
 		private mesh: Mesh;
-		private shader: Shader = null;		
+		private shader: Shader = null;
 		private lastTexture: GLTexture = null;
 		private verticesLength = 0;
 		private indicesLength = 0;
-		private srcBlend: number = WebGLRenderingContext.SRC_ALPHA;
-		private dstBlend: number = WebGLRenderingContext.ONE_MINUS_SRC_ALPHA;
+		private srcBlend: number;
+		private dstBlend: number;
 
-		constructor (gl: WebGLRenderingContext, maxVertices: number = 10920) {
+		constructor (context: ManagedWebGLRenderingContext | WebGLRenderingContext, twoColorTint: boolean = true, maxVertices: number = 10920) {
 			if (maxVertices > 10920) throw new Error("Can't have more than 10920 triangles per batch: " + maxVertices);
-			this.gl = gl;
-			this.mesh = new Mesh(gl, [new Position2Attribute(), new ColorAttribute(), new TexCoordAttribute()], maxVertices, maxVertices * 3);			
+			this.context = context instanceof ManagedWebGLRenderingContext? context : new ManagedWebGLRenderingContext(context);
+			let attributes = twoColorTint ?
+					[new Position2Attribute(), new ColorAttribute(), new TexCoordAttribute(), new Color2Attribute()] :
+					[new Position2Attribute(), new ColorAttribute(), new TexCoordAttribute()];
+			this.mesh = new Mesh(context, attributes, maxVertices, maxVertices * 3);
+			this.srcBlend = this.context.gl.SRC_ALPHA;
+			this.dstBlend = this.context.gl.ONE_MINUS_SRC_ALPHA;
 		}
 
-		begin (shader: Shader) {			
-			let gl = this.gl;
+		begin (shader: Shader) {
+			let gl = this.context.gl;
 			if (this.isDrawing) throw new Error("PolygonBatch is already drawing. Call PolygonBatch.end() before calling PolygonBatch.begin()");
 			this.drawCalls = 0;
 			this.shader = shader;
@@ -61,7 +65,7 @@ module spine.webgl {
 		}
 
 		setBlendMode (srcBlend: number, dstBlend: number) {
-			let gl = this.gl;
+			let gl = this.context.gl;
 			this.srcBlend = srcBlend;
 			this.dstBlend = dstBlend;
 			if (this.isDrawing) {
@@ -74,7 +78,6 @@ module spine.webgl {
 			if (texture != this.lastTexture) {
 				this.flush();
 				this.lastTexture = texture;
-				texture.bind();
 			} else if (this.verticesLength + vertices.length > this.mesh.getVertices().length ||
 					this.indicesLength + indices.length > this.mesh.getIndices().length) {
 				this.flush();
@@ -93,9 +96,10 @@ module spine.webgl {
 		}
 
 		private flush () {
-			let gl = this.gl;
+			let gl = this.context.gl;
 			if (this.verticesLength == 0) return;
 
+			this.lastTexture.bind();
 			this.mesh.draw(this.shader, gl.TRIANGLES);
 
 			this.verticesLength = 0;
@@ -106,7 +110,7 @@ module spine.webgl {
 		}
 
 		end () {
-			let gl = this.gl;
+			let gl = this.context.gl;
 			if (!this.isDrawing) throw new Error("PolygonBatch is not drawing. Call PolygonBatch.begin() before calling PolygonBatch.end()");
 			if (this.verticesLength > 0 || this.indicesLength > 0) this.flush();
 			this.shader = null;
@@ -119,7 +123,7 @@ module spine.webgl {
 		getDrawCalls () { return this.drawCalls; }
 
 		dispose () {
-			this.mesh.dispose();			
+			this.mesh.dispose();
 		}
 	}
 }

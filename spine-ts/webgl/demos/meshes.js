@@ -1,49 +1,39 @@
-var meshesDemo = function(loadingComplete, bgColor) {
+var meshesDemo = function(canvas, bgColor) {
 	var canvas, gl, renderer, input, assetManager;
-	var skeleton, bounds;		
+	var skeleton, bounds;
 	var timeKeeper, loadingScreen;
 	var skeletons = {};
 	var activeSkeleton = "Orange Girl";
-	var playButton, timeLine, isPlaying = true;
+	var playButton, timeline, isPlaying = true;
 
 	var DEMO_NAME = "MeshesDemo";
 
 	if (!bgColor) bgColor = new spine.Color(235 / 255, 239 / 255, 244 / 255, 1);
 
 	function init () {
-		canvas = document.getElementById("meshes-canvas");
 		canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
-		gl = canvas.getContext("webgl", { alpha: false }) || canvas.getContext("experimental-webgl", { alpha: false });	
-
+		gl = canvas.ctx.gl;
 		renderer = new spine.webgl.SceneRenderer(canvas, gl);
 		renderer.skeletonDebugRenderer.drawRegionAttachments = false;
 		assetManager = spineDemos.assetManager;
-		var textureLoader = function(img) { return new spine.webgl.GLTexture(gl, img); };		
+		var textureLoader = function(img) { return new spine.webgl.GLTexture(gl, img); };
 		assetManager.loadTexture(DEMO_NAME, textureLoader, "atlas2.png");
 		assetManager.loadText(DEMO_NAME, "atlas2.atlas");
-		assetManager.loadJson(DEMO_NAME, "demos.json");	
-		timeKeeper = new spine.TimeKeeper();		
-		loadingScreen = new spine.webgl.LoadingScreen(renderer);
-		requestAnimationFrame(load);
-	}	
+		assetManager.loadJson(DEMO_NAME, "demos.json");
+		timeKeeper = new spine.TimeKeeper();
+	}
 
-	function load () {
+	function loadingComplete () {
 		timeKeeper.update();
-		if (assetManager.isLoadingComplete(DEMO_NAME)) {
-			skeletons["Orange Girl"] = loadSkeleton("orangegirl", "animation");
-			skeletons["Green Girl"] = loadSkeleton("greengirl", "animation");
-			skeletons["Armor Girl"] = loadSkeleton("armorgirl", "animation");
-			setupUI();
-			loadingComplete(canvas, render);
-		} else {
-			loadingScreen.draw();
-			requestAnimationFrame(load);
-		}
+		skeletons["Orange Girl"] = loadSkeleton("orangegirl", "animation");
+		skeletons["Green Girl"] = loadSkeleton("greengirl", "animation");
+		skeletons["Armor Girl"] = loadSkeleton("armorgirl", "animation");
+		setupUI();
 	}
 
 	function setupUI() {
 		playButton = $("#meshes-playbutton");
-		var playButtonUpdate = function () {			
+		var playButtonUpdate = function () {
 			isPlaying = !isPlaying;
 			if (isPlaying)
 				playButton.addClass("pause").removeClass("play");
@@ -53,9 +43,9 @@ var meshesDemo = function(loadingComplete, bgColor) {
 		playButton.click(playButtonUpdate);
 		playButton.addClass("pause");
 
-		timeLine = $("#meshes-timeline").data("slider");
-		timeLine.changed = function (percent) {
-			if (isPlaying) playButton.click();		
+		timeline = $("#meshes-timeline").data("slider");
+		timeline.changed = function (percent) {
+			if (isPlaying) playButton.click();
 			if (!isPlaying) {
 				var active = skeletons[activeSkeleton];
 				var animationDuration = active.state.getCurrent(0).animation.duration;
@@ -63,11 +53,11 @@ var meshesDemo = function(loadingComplete, bgColor) {
 				active.state.update(time - active.playTime);
 				active.state.apply(active.skeleton);
 				active.skeleton.updateWorldTransform();
-				active.playTime = time;				
+				active.playTime = time;
 			}
 		};
 
-		var list = $("#meshes-skeleton");	
+		var list = $("#meshes-skeleton");
 		for (var skeletonName in skeletons) {
 			var option = $("<option></option>");
 			option.attr("value", skeletonName).text(skeletonName);
@@ -78,7 +68,7 @@ var meshesDemo = function(loadingComplete, bgColor) {
 			activeSkeleton = $("#meshes-skeleton option:selected").text();
 			var active = skeletons[activeSkeleton];
 			var animationDuration = active.state.getCurrent(0).animation.duration;
-			timeLine.set(active.playTime / animationDuration);
+			timeline.set(active.playTime / animationDuration);
 		})
 
 		renderer.skeletonDebugRenderer.drawBones = false;
@@ -96,9 +86,9 @@ var meshesDemo = function(loadingComplete, bgColor) {
 
 	function loadSkeleton(name, animation, sequenceSlots) {
 		var atlas = new spine.TextureAtlas(assetManager.get(DEMO_NAME, "atlas2.atlas"), function(path) {
-			return assetManager.get(DEMO_NAME, path);		
+			return assetManager.get(DEMO_NAME, path);
 		});
-		var atlasLoader = new spine.TextureAtlasAttachmentLoader(atlas);
+		var atlasLoader = new spine.AtlasAttachmentLoader(atlas);
 		var skeletonJson = new spine.SkeletonJson(atlasLoader);
 		var skeletonData = skeletonJson.readSkeletonData(assetManager.get(DEMO_NAME, "demos.json")[name]);
 		var skeleton = new spine.Skeleton(skeletonData);
@@ -107,26 +97,26 @@ var meshesDemo = function(loadingComplete, bgColor) {
 		var state = new spine.AnimationState(new spine.AnimationStateData(skeletonData));
 		state.setAnimation(0, animation, true);
 		state.apply(skeleton);
-		skeleton.updateWorldTransform();			
+		skeleton.updateWorldTransform();
 		var offset = new spine.Vector2();
 		var size = new spine.Vector2();
-		skeleton.getBounds(offset, size);
+		skeleton.getBounds(offset, size, []);
 
 		return {
 			atlas: atlas,
-			skeleton: skeleton, 
-			state: state, 
+			skeleton: skeleton,
+			state: state,
 			playTime: 0,
 			bounds: {
 				offset: offset,
 				size: size
-			}			
+			}
 		};
 	}
 
 	function render () {
 		timeKeeper.update();
-		var delta = timeKeeper.delta;	
+		var delta = timeKeeper.delta;
 
 		var active = skeletons[activeSkeleton];
 		var skeleton = active.skeleton;
@@ -145,24 +135,24 @@ var meshesDemo = function(loadingComplete, bgColor) {
 
 		if (isPlaying) {
 			var animationDuration = state.getCurrent(0).animation.duration;
-			active.playTime += delta;			
-			while (active.playTime >= animationDuration) {
+			active.playTime += delta;
+			while (active.playTime >= animationDuration)
 				active.playTime -= animationDuration;
-			}
-			timeLine.set(active.playTime / animationDuration);
+			timeline.set(active.playTime / animationDuration);
 
 			state.update(delta);
 			state.apply(skeleton);
 			skeleton.updateWorldTransform();
 		}
 
-		renderer.begin();				
+		renderer.begin();
 		renderer.drawSkeleton(skeleton, true);
 		renderer.drawSkeletonDebug(skeleton);
 		renderer.end();
-
-		loadingScreen.draw(true);
 	}
 
+	meshesDemo.loadingComplete = loadingComplete;
+	meshesDemo.render = render;
+	meshesDemo.DEMO_NAME = DEMO_NAME;
 	init();
 };

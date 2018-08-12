@@ -1,60 +1,50 @@
-var skinsDemo = function(loadingComplete, bgColor) {	
+var skinsDemo = function(canvas, bgColor) {
 	var canvas, gl, renderer, input, assetManager;
-	var skeleton, state, offset, bounds;		
+	var skeleton, state, offset, bounds;
 	var timeKeeper, loadingScreen;
 	var playButton, timeLine, isPlaying = true, playTime = 0;
 	var randomizeSkins, lastSkinChange = Date.now() / 1000, clickAnim = 0;
 
 	var DEMO_NAME = "SkinsDemo";
 
-	if (!bgColor) bgColor = new spine.Color(235 / 255, 239 / 255, 244 / 255, 1);		
+	if (!bgColor) bgColor = new spine.Color(235 / 255, 239 / 255, 244 / 255, 1);
 
 	function init () {
-		canvas = document.getElementById("skins-canvas");
 		canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
-		gl = canvas.getContext("webgl", { alpha: false }) || canvas.getContext("experimental-webgl", { alpha: false });	
+		gl = canvas.ctx.gl;
 
-		renderer = new spine.webgl.SceneRenderer(canvas, gl);				
+		renderer = new spine.webgl.SceneRenderer(canvas, gl);
 		assetManager = spineDemos.assetManager;
-		var textureLoader = function(img) { return new spine.webgl.GLTexture(gl, img); };		
+		var textureLoader = function(img) { return new spine.webgl.GLTexture(gl, img); };
 		assetManager.loadTexture(DEMO_NAME, textureLoader, "heroes.png");
 		assetManager.loadText(DEMO_NAME, "heroes.atlas");
-		assetManager.loadJson(DEMO_NAME, "demos.json");		
+		assetManager.loadJson(DEMO_NAME, "demos.json");
 		input = new spine.webgl.Input(canvas);
-		timeKeeper = new spine.TimeKeeper();		
-		loadingScreen = new spine.webgl.LoadingScreen(renderer);
-		requestAnimationFrame(load);
+		timeKeeper = new spine.TimeKeeper();
 	}
 
-	function load () {
-		timeKeeper.update();
-		if (assetManager.isLoadingComplete(DEMO_NAME)) {
-			var atlas = new spine.TextureAtlas(assetManager.get(DEMO_NAME, "heroes.atlas"), function(path) {
-				return assetManager.get(DEMO_NAME, path);		
-			});
-			var atlasLoader = new spine.TextureAtlasAttachmentLoader(atlas);
-			var skeletonJson = new spine.SkeletonJson(atlasLoader);
-			var skeletonData = skeletonJson.readSkeletonData(assetManager.get(DEMO_NAME, "demos.json").heroes);
-			skeleton = new spine.Skeleton(skeletonData);
-			skeleton.setSkinByName("Assassin");
-			var stateData = new spine.AnimationStateData(skeleton.data);
-			stateData.defaultMix = 0.2;
-			stateData.setMix("roll", "run", 0);
-			stateData.setMix("jump", "run2", 0);						
-			state = new spine.AnimationState(stateData);			
-			setupAnimations(state);			
-			state.apply(skeleton);
-			skeleton.updateWorldTransform();
-			offset = new spine.Vector2();
-			bounds = new spine.Vector2();
-			skeleton.getBounds(offset, bounds);
-			setupUI();
-			setupInput();
-			loadingComplete(canvas, render);
-		} else {
-			loadingScreen.draw();
-			requestAnimationFrame(load);
-		}
+	function loadingComplete () {
+		var atlas = new spine.TextureAtlas(assetManager.get(DEMO_NAME, "heroes.atlas"), function(path) {
+			return assetManager.get(DEMO_NAME, path);
+		});
+		var atlasLoader = new spine.AtlasAttachmentLoader(atlas);
+		var skeletonJson = new spine.SkeletonJson(atlasLoader);
+		var skeletonData = skeletonJson.readSkeletonData(assetManager.get(DEMO_NAME, "demos.json").heroes);
+		skeleton = new spine.Skeleton(skeletonData);
+		skeleton.setSkinByName("Assassin");
+		var stateData = new spine.AnimationStateData(skeleton.data);
+		stateData.defaultMix = 0.2;
+		stateData.setMix("roll", "run", 0);
+		stateData.setMix("jump", "run2", 0);
+		state = new spine.AnimationState(stateData);
+		setupAnimations(state);
+		state.apply(skeleton);
+		skeleton.updateWorldTransform();
+		offset = new spine.Vector2();
+		bounds = new spine.Vector2();
+		skeleton.getBounds(offset, bounds, []);
+		setupUI();
+		setupInput();
 	}
 
 	function setupInput (){
@@ -100,12 +90,9 @@ var skinsDemo = function(loadingComplete, bgColor) {
 		state.addAnimation(0, "crouchIdle", true, 1.5);
 		state.addAnimation(0, "crouchWalk", true, 2);
 		state.addAnimation(0, "crouchIdle", true, 2.5).listener = {
-			event: function (trackIndex, event) {},
-			complete: function (trackIndex, loopCount) {},
 			start: function (trackIndex) {
 				setupAnimations(state);
-			},
-			end: function (trackIndex) {}
+			}
 		};
 
 		state.setAnimation(1, "empty", false, 0);
@@ -113,7 +100,7 @@ var skinsDemo = function(loadingComplete, bgColor) {
 	}
 
 	function setupUI() {
-		var list = $("#skins-skin");	
+		var list = $("#skins-skin");
 		for (var skin in skeleton.data.skins) {
 			skin = skeleton.data.skins[skin];
 			if (skin.name == "default") continue;
@@ -144,11 +131,11 @@ var skinsDemo = function(loadingComplete, bgColor) {
 		skeleton.setSlotsToSetupPose();
 		slot.setAttachment(weapon);
 	}
-	
+
 	function swingSword () {
-		state.setAnimation(5, (clickAnim++ % 2 == 0) ? "meleeSwing2" : "meleeSwing1", false, 0);				
+		state.setAnimation(5, (clickAnim++ % 2 == 0) ? "meleeSwing2" : "meleeSwing1", false, 0);
 	}
-	
+
 	function randomizeSkin () {
 		var result;
 		var count = 0;
@@ -161,7 +148,7 @@ var skinsDemo = function(loadingComplete, bgColor) {
 		setSkin(result);
 		$("#skins-skin option").filter(function() {
 			return ($(this).text() == result.name);
-		}).prop("selected", true);		
+		}).prop("selected", true);
 	}
 
 	function randomizeAttachments () {
@@ -203,23 +190,24 @@ var skinsDemo = function(loadingComplete, bgColor) {
 		renderer.resize(spine.webgl.ResizeMode.Fit);
 
 		gl.clearColor(bgColor.r, bgColor.g, bgColor.b, bgColor.a);
-		gl.clear(gl.COLOR_BUFFER_BIT);			
+		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		state.update(delta);
 		state.apply(skeleton);
-		skeleton.updateWorldTransform();		
+		skeleton.updateWorldTransform();
 
-		renderer.begin();				
+		renderer.begin();
 		renderer.drawSkeleton(skeleton, true);
 		var texture = assetManager.get(DEMO_NAME, "heroes.png");
 		var width = bounds.x * 1.25;
 		var scale = width / texture.getImage().width;
 		var height = scale * texture.getImage().height;
-		renderer.drawTexture(texture, offset.x + bounds.x + 190, offset.y + bounds.y / 2 - height / 2 - 5, width, height);		
+		renderer.drawTexture(texture, offset.x + bounds.x + 190, offset.y + bounds.y / 2 - height / 2 - 5, width, height);
 		renderer.end();
-
-		loadingScreen.draw(true);		
 	}
 
+	skinsDemo.loadingComplete = loadingComplete;
+	skinsDemo.render = render;
+	skinsDemo.DEMO_NAME = DEMO_NAME;
 	init();
 };

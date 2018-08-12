@@ -3,50 +3,122 @@ var spineDemos = {
 	HOVER_COLOR_OUTER: new spine.Color(1, 1, 1, 1),
 	NON_HOVER_COLOR_INNER: new spine.Color(0.478, 0, 0, 0.5),
 	NON_HOVER_COLOR_OUTER: new spine.Color(1, 0, 0, 0.8),
-	assetManager: new spine.SharedAssetManager("http://esotericsoftware.com/demos/exports/"),
+	assetManager: new spine.SharedAssetManager("assets/"),
 	demos: [],
-	loopRunning: false
+	loopRunning: false,
+	canvases: []
 };
+
+window.onerror = function (msg, url, lineNo, columnNo, error) {
+    var string = msg.toLowerCase();
+    var substring = "script error";
+    if (string.indexOf(substring) > -1){
+        alert('Script Error: See Browser Console for Detail');
+    } else {
+        var message = [
+            'Message: ' + msg,
+            'URL: ' + url,
+            'Line: ' + lineNo,
+            'Column: ' + columnNo,
+            'Error object: ' + JSON.stringify(error)
+        ].join(' - ');
+
+        alert(message);
+    }
+
+    return false;
+};
+
 (function () {
 	var timeKeeper = new spine.TimeKeeper();
 	function loop () {
 		timeKeeper.update();
 		if (spineDemos.log) console.log(timeKeeper.delta + ", " + timeKeeper.framesPerSecond);
 		requestAnimationFrame(loop);
-		var demos = spineDemos.demos;		
+		var demos = spineDemos.demos;
 		for (var i = 0; i < demos.length; i++) {
-			var demo = demos[i];
-			var canvas = demo.canvas;
-			var renderFunc = demo.renderFunc;
+			var demo = demos[i];			
+
+			checkElementVisible(demo);
+			renderDemo(demo);
+		}
+	}
+
+	function renderDemo(demo) {
+		var canvas = demo.canvas;
+		if (!spineDemos.assetManager.isLoadingComplete(demo.DEMO_NAME)) {
 			if (demo.visible) {
+				if (canvas.parentElement != demo.placeholder) {
+					$(canvas).detach();
+					demo.placeholder.appendChild(canvas);
+				}
+				demo.loadingScreen.draw();
+			}
+		} else {
+			if (!demo.loaded) {
+				demo.loadingComplete();
+				demo.loaded = true;
+			}
+
+			if (demo.visible) {
+				if (canvas.parentElement != demo.placeholder) {
+					$(canvas).detach();
+					demo.placeholder.appendChild(canvas);
+				}
 				if (spineDemos.log) console.log("Rendering " + canvas.id);
-				renderFunc();
+				demo.render();
+				demo.loadingScreen.draw(true);
 			}
 		}
 	}
 
-	function checkElementVisible (demo) {
-		var rect = demo.canvas.getBoundingClientRect();
-		var x = 0, y = 0;
-		var width = (window.innerHeight || document.documentElement.clientHeight);
-		var height = (window.innerWidth || document.documentElement.clientWidth);
-		demo.visible = rect.left < x + width && rect.right > x && rect.top < y + height && rect.bottom > y;		 
-	};
+	function checkElementVisible(demo) {
+		const rect = demo.placeholder.getBoundingClientRect();
+		const windowHeight = (window.innerHeight || document.documentElement.clientHeight);
+		const windowWidth = (window.innerWidth || document.documentElement.clientWidth);
+		const vertInView = (rect.top <= windowHeight * 1.1) && ((rect.top + rect.height) >= windowHeight * -0.1);
+		const horInView = (rect.left <= windowWidth * 1.1) && ((rect.left + rect.width) >= windowWidth * -0.1);
 
-	spineDemos.setupRendering = function (canvas, renderFunc) {
-		var demo = {canvas: canvas, renderFunc: renderFunc, visible: false};
+		demo.visible = (vertInView && horInView);
+	}
+
+	function createCanvases (numCanvases) {
+		for (var i = 0; i < numCanvases; i++) {
+			var canvas = document.createElement("canvas");
+			canvas.width = 1; canvas.height = 1;
+			canvas.ctx = new spine.webgl.ManagedWebGLRenderingContext(canvas, { alpha: false });
+			canvas.id = "canvas-" + i;		
+			spineDemos.canvases.push(canvas);
+		}
+	}
+
+	spineDemos.init = function () {
+		var numCanvases = 5;
+		var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+		var isAndroid = navigator.userAgent.toLowerCase().indexOf("android") > -1;
+		if (isFirefox && isAndroid) numCanvases = 2;
+		createCanvases(numCanvases);
+		loadSliders();
+		requestAnimationFrame(loop);
+	}
+
+	spineDemos.addDemo = function (demo, placeholder) {
+		var canvas = spineDemos.canvases[spineDemos.demos.length % spineDemos.canvases.length];
+		demo(canvas);
+		demo.placeholder = placeholder;
+		demo.canvas = canvas;
+		demo.visible = false;
+		var renderer = new spine.webgl.SceneRenderer(canvas, canvas.ctx.gl);
+		demo.loadingScreen = new spine.webgl.LoadingScreen(renderer);
 		$(window).on('DOMContentLoaded load resize scroll', function() {
 			checkElementVisible(demo);
+			renderDemo(demo);
 		});
 		checkElementVisible(demo);
-		if (!spineDemos.loopRunning) {			
-			loop();
-			spineDemos.loopRunning = true;
-		}
 		spineDemos.demos.push(demo);
-	};
+	}
 
-	spineDemos.loadSliders = function () {
+	loadSliders = function () {
 		$(window).resize(function() {
 			$(".slider").each(function () {
 				$(this).data("slider").resized();

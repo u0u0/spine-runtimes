@@ -1,16 +1,16 @@
-var transformsDemo = function(loadingComplete, bgColor) {
+var transformsDemo = function(canvas, bgColor) {
 	var COLOR_INNER = new spine.Color(0.8, 0, 0, 0.5);
 	var COLOR_OUTER = new spine.Color(0.8, 0, 0, 0.8);
 	var COLOR_INNER_SELECTED = new spine.Color(0.0, 0, 0.8, 0.5);
 	var COLOR_OUTER_SELECTED = new spine.Color(0.0, 0, 0.8, 0.8);
 
 	var canvas, gl, renderer, input, assetManager;
-	var skeleton, state, bounds;		
-	var timeKeeper, loadingScreen;	
-	var rotateHandle;	
+	var skeleton, state, bounds;
+	var timeKeeper;
+	var rotateHandle;
 	var target = null;
 	var hoverTargets = [null, null, null];
-	var controlBones = ["wheel2overlay", "wheel3overlay", "rotate-handle"];	
+	var controlBones = ["wheel2overlay", "wheel3overlay", "rotate-handle"];
 	var coords = new spine.webgl.Vector3(), temp = new spine.webgl.Vector3(), temp2 = new spine.Vector2();
 	var lastRotation = 0;
 	var mix, lastOffset = 0, lastMix = 0.5;
@@ -20,57 +20,46 @@ var transformsDemo = function(loadingComplete, bgColor) {
 	if (!bgColor) bgColor = new spine.Color(235 / 255, 239 / 255, 244 / 255, 1);
 
 	function init () {
-		canvas = document.getElementById("transforms-canvas");
 		canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight;
-		gl = canvas.getContext("webgl", { alpha: false }) || canvas.getContext("experimental-webgl", { alpha: false });	
+		gl = canvas.ctx.gl;
 
 		renderer = new spine.webgl.SceneRenderer(canvas, gl);
 		assetManager = spineDemos.assetManager;
-		var textureLoader = function(img) { return new spine.webgl.GLTexture(gl, img); };		
+		var textureLoader = function(img) { return new spine.webgl.GLTexture(gl, img); };
 		assetManager.loadTexture(DEMO_NAME, textureLoader, "atlas2.png");
 		assetManager.loadText(DEMO_NAME, "atlas2.atlas");
 		assetManager.loadJson(DEMO_NAME, "demos.json");
 		input = new spine.webgl.Input(canvas);
-		timeKeeper = new spine.TimeKeeper();		
-		loadingScreen = new spine.webgl.LoadingScreen(renderer);
-		requestAnimationFrame(load);
+		timeKeeper = new spine.TimeKeeper();
 	}
 
-	function load () {
-		timeKeeper.update();
-		if (assetManager.isLoadingComplete(DEMO_NAME)) {
-			var atlas = new spine.TextureAtlas(assetManager.get(DEMO_NAME, "atlas2.atlas"), function(path) {
-				return assetManager.get(DEMO_NAME, path);		
-			});
-			var atlasLoader = new spine.TextureAtlasAttachmentLoader(atlas);
-			var skeletonJson = new spine.SkeletonJson(atlasLoader);
-			var skeletonData = skeletonJson.readSkeletonData(assetManager.get(DEMO_NAME, "demos.json").transforms);
-			skeleton = new spine.Skeleton(skeletonData);
-			skeleton.setToSetupPose();
-			skeleton.updateWorldTransform();
-			var offset = new spine.Vector2();
-			bounds = new spine.Vector2();
-			skeleton.getBounds(offset, bounds);
-			state = new spine.AnimationState(new spine.AnimationStateData(skeleton.data));
-			skeleton.setToSetupPose();			
-			skeleton.updateWorldTransform();
-			rotateHandle = skeleton.findBone("rotate-handle");		
+	function loadingComplete () {
+		var atlas = new spine.TextureAtlas(assetManager.get(DEMO_NAME, "atlas2.atlas"), function(path) {
+			return assetManager.get(DEMO_NAME, path);
+		});
+		var atlasLoader = new spine.AtlasAttachmentLoader(atlas);
+		var skeletonJson = new spine.SkeletonJson(atlasLoader);
+		var skeletonData = skeletonJson.readSkeletonData(assetManager.get(DEMO_NAME, "demos.json").transforms);
+		skeleton = new spine.Skeleton(skeletonData);
+		skeleton.setToSetupPose();
+		skeleton.updateWorldTransform();
+		var offset = new spine.Vector2();
+		bounds = new spine.Vector2();
+		skeleton.getBounds(offset, bounds, []);
+		state = new spine.AnimationState(new spine.AnimationStateData(skeleton.data));
+		skeleton.setToSetupPose();
+		skeleton.updateWorldTransform();
+		rotateHandle = skeleton.findBone("rotate-handle");
 
-			renderer.camera.position.x = offset.x + bounds.x / 2;
-			renderer.camera.position.y = offset.y + bounds.y / 2;
+		renderer.camera.position.x = offset.x + bounds.x / 2;
+		renderer.camera.position.y = offset.y + bounds.y / 2;
 
-			renderer.skeletonDebugRenderer.drawRegionAttachments = false;
-			renderer.skeletonDebugRenderer.drawMeshHull = false;
-			renderer.skeletonDebugRenderer.drawMeshTriangles = false;
-			
-			setupUI();
-			setupInput();
+		renderer.skeletonDebugRenderer.drawRegionAttachments = false;
+		renderer.skeletonDebugRenderer.drawMeshHull = false;
+		renderer.skeletonDebugRenderer.drawMeshTriangles = false;
 
-			loadingComplete(canvas, render);
-		} else {
-			loadingScreen.draw();
-			requestAnimationFrame(load);
-		}
+		setupUI();
+		setupInput();
 	}
 
 	function setupUI() {
@@ -79,7 +68,7 @@ var transformsDemo = function(loadingComplete, bgColor) {
 			var val = percent * 360 - 180;
 			var delta = val - lastOffset;
 			lastOffset = val;
-			skeleton.findTransformConstraint("wheel2").data.offsetRotation += delta;			
+			skeleton.findTransformConstraint("wheel2").data.offsetRotation += delta;
 			skeleton.findTransformConstraint("wheel3").data.offsetRotation += delta;
 			$("#transforms-rotationoffset-label").text(Math.round(val) + "°");
 		};
@@ -103,21 +92,21 @@ var transformsDemo = function(loadingComplete, bgColor) {
 			var wheel1 = skeleton.findBone("wheel1overlay");
 			var v = coords.sub(new spine.webgl.Vector3(wheel1.worldX, wheel1.worldY, 0)).normalize();
 			var angle = Math.acos(v.x) * spine.MathUtils.radiansToDegrees;
-			if (v.y < 0) angle = 360 - angle;			
+			if (v.y < 0) angle = 360 - angle;
 			return angle;
 		}
 		input.addListener({
-			down: function(x, y) { 
+			down: function(x, y) {
 				renderer.camera.screenToWorld(coords.set(x, y, 0), canvas.width, canvas.height);
-				for (var i = 0; i < controlBones.length; i++) {	
-					var bone = skeleton.findBone(controlBones[i]);													
+				for (var i = 0; i < controlBones.length; i++) {
+					var bone = skeleton.findBone(controlBones[i]);
 					if (temp.set(skeleton.x + bone.worldX, skeleton.y + bone.worldY, 0).distance(coords) < 30) {
 						target = bone;
 						if (target === rotateHandle) lastRotation = getRotation(x, y);
-					}				
-				}				
+					}
+				}
 			},
-			up: function(x, y) { 
+			up: function(x, y) {
 				target = null;
 			},
 			dragged: function(x, y) {
@@ -140,10 +129,10 @@ var transformsDemo = function(loadingComplete, bgColor) {
 					}
 				}
 			 },
-			moved: function (x, y) { 
+			moved: function (x, y) {
 				renderer.camera.screenToWorld(coords.set(x, y, 0), canvas.width, canvas.height);
 				for (var i = 0; i < controlBones.length; i++) {
-					var bone = skeleton.findBone(controlBones[i]);													
+					var bone = skeleton.findBone(controlBones[i]);
 					if (temp.set(skeleton.x + bone.worldX, skeleton.y + bone.worldY, 0).distance(coords) < 30) {
 						hoverTargets[i] = bone;
 					} else {
@@ -157,10 +146,9 @@ var transformsDemo = function(loadingComplete, bgColor) {
 	function render () {
 		timeKeeper.update();
 		var delta = timeKeeper.delta;
-
 		skeleton.updateWorldTransform();
 
-		renderer.camera.viewportWidth = bounds.x * 1.2;
+		renderer.camera.viewportWidth = bounds.x * 1.6;
 		renderer.camera.viewportHeight = bounds.y * 1.2;
 		renderer.resize(spine.webgl.ResizeMode.Fit);
 
@@ -171,18 +159,19 @@ var transformsDemo = function(loadingComplete, bgColor) {
 		renderer.drawSkeleton(skeleton, true);
 		renderer.drawSkeletonDebug(skeleton, false, ["root", "rotate-handle"]);
 		gl.lineWidth(2);
-		for (var i = 0; i < controlBones.length; i++) {		
+		for (var i = 0; i < controlBones.length; i++) {
 			var bone = skeleton.findBone(controlBones[i]);
 			var colorInner = hoverTargets[i] !== null ? spineDemos.HOVER_COLOR_INNER : spineDemos.NON_HOVER_COLOR_INNER;
 			var colorOuter = hoverTargets[i] !== null ? spineDemos.HOVER_COLOR_OUTER : spineDemos.NON_HOVER_COLOR_OUTER;
-			renderer.circle(true, skeleton.x + bone.worldX, skeleton.y + bone.worldY, 20, colorInner);			
-			renderer.circle(false, skeleton.x + bone.worldX, skeleton.y + bone.worldY, 20, colorOuter);			
+			renderer.circle(true, skeleton.x + bone.worldX, skeleton.y + bone.worldY, 20, colorInner);
+			renderer.circle(false, skeleton.x + bone.worldX, skeleton.y + bone.worldY, 20, colorOuter);
 		}
 		gl.lineWidth(1);
 		renderer.end();
-
-		loadingScreen.draw(true);
 	}
 
+	transformsDemo.loadingComplete = loadingComplete;
+	transformsDemo.render = render;
+	transformsDemo.DEMO_NAME = DEMO_NAME;
 	init();
 };

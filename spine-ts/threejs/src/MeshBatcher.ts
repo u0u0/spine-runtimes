@@ -1,10 +1,9 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.5
- * 
+ * Spine Runtimes Software License v2.5
+ *
  * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
+ *
  * You are granted a perpetual, non-exclusive, non-sublicensable, and
  * non-transferable license to use, install, execute, and perform the Spine
  * Runtimes software and derivative works solely for personal or internal
@@ -16,7 +15,7 @@
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
@@ -30,22 +29,19 @@
  *****************************************************************************/
 
 module spine.threejs {
-	export class MeshBatcher {
-		mesh: THREE.Mesh;
-
+	export class MeshBatcher extends THREE.Mesh {
 		private static VERTEX_SIZE = 9;
 		private vertexBuffer: THREE.InterleavedBuffer;
 		private vertices: Float32Array;
-		private verticesLength = 0;		
+		private verticesLength = 0;
 		private indices: Uint16Array;
 		private indicesLength = 0;
 
-		constructor (mesh: THREE.Mesh, maxVertices: number = 10920) {
+		constructor (maxVertices: number = 10920) {
+			super();
 			if (maxVertices > 10920) throw new Error("Can't have more than 10920 triangles per batch: " + maxVertices);
-
 			let vertices = this.vertices = new Float32Array(maxVertices * MeshBatcher.VERTEX_SIZE);
 			let indices = this.indices = new Uint16Array(maxVertices * 3);
-			this.mesh = mesh;			
 			let geo = new THREE.BufferGeometry();
 			let vertexBuffer = this.vertexBuffer = new THREE.InterleavedBuffer(vertices, MeshBatcher.VERTEX_SIZE);
 			vertexBuffer.dynamic = true;
@@ -56,7 +52,15 @@ module spine.threejs {
 			geo.getIndex().dynamic = true;
 			geo.drawRange.start = 0;
 			geo.drawRange.count = 0;
-			mesh.geometry = geo;
+			this.geometry = geo;
+			this.material = new SkeletonMeshMaterial();
+		}
+
+		clear () {
+			let geo = (<THREE.BufferGeometry>this.geometry);
+			geo.drawRange.start = 0;
+			geo.drawRange.count = 0;
+			(<SkeletonMeshMaterial>this.material).uniforms.map.value = null;
 		}
 
 		begin () {
@@ -64,12 +68,18 @@ module spine.threejs {
 			this.indicesLength = 0;
 		}
 
-		batch (vertices: ArrayLike<number>, indices: ArrayLike<number>, z: number = 0) {
+		canBatch(verticesLength: number, indicesLength: number) {
+			if (this.indicesLength + indicesLength >= this.indices.byteLength / 2) return false;
+			if (this.verticesLength + verticesLength >= this.vertices.byteLength / 2) return false;
+			return true;
+		}
+
+		batch (vertices: ArrayLike<number>, verticesLength: number, indices: ArrayLike<number>, indicesLength: number, z: number = 0) {
 			let indexStart = this.verticesLength / MeshBatcher.VERTEX_SIZE;
 			let vertexBuffer = this.vertices;
 			let i = this.verticesLength;
 			let j = 0;
-			for (;j < vertices.length;) {
+			for (;j < verticesLength;) {
 				vertexBuffer[i++] = vertices[j++];
 				vertexBuffer[i++] = vertices[j++];
 				vertexBuffer[i++] = z;
@@ -79,25 +89,25 @@ module spine.threejs {
 				vertexBuffer[i++] = vertices[j++];
 				vertexBuffer[i++] = vertices[j++];
 				vertexBuffer[i++] = vertices[j++];
-			}			
-			this.verticesLength = i;			
+			}
+			this.verticesLength = i;
 
 			let indicesArray = this.indices;
-			for (i = this.indicesLength, j = 0; j < indices.length; i++, j++)
+			for (i = this.indicesLength, j = 0; j < indicesLength; i++, j++)
 				indicesArray[i] = indices[j] + indexStart;
-			this.indicesLength += indices.length;			
+			this.indicesLength += indicesLength;
 		}
 
 		end () {
 			this.vertexBuffer.needsUpdate = true;
 			this.vertexBuffer.updateRange.offset = 0;
 			this.vertexBuffer.updateRange.count = this.verticesLength;
-			let geo = (<THREE.BufferGeometry>this.mesh.geometry);
+			let geo = (<THREE.BufferGeometry>this.geometry);
 			geo.getIndex().needsUpdate = true;
 			geo.getIndex().updateRange.offset = 0;
 			geo.getIndex().updateRange.count = this.indicesLength;
 			geo.drawRange.start = 0;
-			geo.drawRange.count = this.indicesLength;				
+			geo.drawRange.count = this.indicesLength;
 		}
 	}
 }
