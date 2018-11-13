@@ -245,8 +245,8 @@ namespace Spine.Unity {
 		}
 
 		public static void GenerateSkeletonRendererInstruction (SkeletonRendererInstruction instructionOutput, Skeleton skeleton, Dictionary<Slot, Material> customSlotMaterials, List<Slot> separatorSlots, bool generateMeshOverride, bool immutableTriangles = false) {
-			//			if (skeleton == null) throw new ArgumentNullException("skeleton");
-			//			if (instructionOutput == null) throw new ArgumentNullException("instructionOutput");
+//			if (skeleton == null) throw new ArgumentNullException("skeleton");
+//			if (instructionOutput == null) throw new ArgumentNullException("instructionOutput");
 
 			ExposedList<Slot> drawOrder = skeleton.drawOrder;
 			int drawOrderCount = drawOrder.Count;
@@ -308,10 +308,10 @@ namespace Spine.Unity {
 						#if SPINE_TRIANGLECHECK
 						var clippingAttachment = attachment as ClippingAttachment;
 						if (clippingAttachment != null) {
-						clippingEndSlot = clippingAttachment.endSlot;
-						clippingAttachmentSource = i;
-						current.hasClipping = true;
-						skeletonHasClipping = true;
+							clippingEndSlot = clippingAttachment.endSlot;
+							clippingAttachmentSource = i;
+							current.hasClipping = true;
+							skeletonHasClipping = true;
 						}
 						#endif
 						noRender = true;
@@ -455,12 +455,14 @@ namespace Spine.Unity {
 		public void AddSubmesh (SubmeshInstruction instruction, bool updateTriangles = true) {
 			var settings = this.settings;
 
-			if (submeshes.Count - 1 < submeshIndex) {
-				submeshes.Resize(submeshIndex + 1);
-				if (submeshes.Items[submeshIndex] == null)
-					submeshes.Items[submeshIndex] = new ExposedList<int>();
-			}
+			int newCount = submeshIndex + 1;
+			if (submeshes.Items.Length < newCount)
+				submeshes.Resize(newCount);
+			submeshes.Count = newCount;
 			var submesh = submeshes.Items[submeshIndex];
+			if (submesh == null)
+				submeshes.Items[submeshIndex] = submesh = new ExposedList<int>();
+
 			submesh.Clear(false);
 
 			var skeleton = instruction.skeleton;
@@ -680,8 +682,8 @@ namespace Spine.Unity {
 
 			int vertexIndex = 0;
 			var tempVerts = this.tempVerts;
-			Vector2 bmin = this.meshBoundsMin;
-			Vector2 bmax = this.meshBoundsMax;
+			Vector3 bmin = this.meshBoundsMin;
+			Vector3 bmax = this.meshBoundsMax;
 
 			var vbi = vertexBuffer.Items;
 			var ubi = uvBuffer.Items;
@@ -988,11 +990,10 @@ namespace Spine.Unity {
 					mesh.bounds = new Bounds();
 				} else {
 					//mesh.bounds = ArraysMeshGenerator.ToBounds(meshBoundsMin, meshBoundsMax);
-					float halfWidth = (meshBoundsMax.x - meshBoundsMin.x) * 0.5f;
-					float halfHeight = (meshBoundsMax.y - meshBoundsMin.y) * 0.5f;
+					Vector2 halfSize = (meshBoundsMax - meshBoundsMin) * 0.5f;
 					mesh.bounds = new Bounds {
-						center = new Vector3(meshBoundsMin.x + halfWidth, meshBoundsMin.y + halfHeight),
-						extents = new Vector3(halfWidth, halfHeight, meshBoundsThickness * 0.5f)
+						center = (Vector3)(meshBoundsMin + halfSize),
+						extents = new Vector3(halfSize.x, halfSize.y, meshBoundsThickness * 0.5f)
 					};
 				}
 			}
@@ -1056,6 +1057,39 @@ namespace Spine.Unity {
 			mesh.SetTriangles(submeshes.Items[0].Items, 0, false);
 		}
 		#endregion
+
+		public void EnsureVertexCapacity (int minimumVertexCount, bool inlcudeTintBlack = false, bool includeTangents = false, bool includeNormals = false) {
+			if (minimumVertexCount > vertexBuffer.Items.Length) {
+				Array.Resize(ref vertexBuffer.Items, minimumVertexCount);
+				Array.Resize(ref uvBuffer.Items, minimumVertexCount);
+				Array.Resize(ref colorBuffer.Items, minimumVertexCount);
+
+				if (inlcudeTintBlack) {
+					if (uv2 == null) {
+						uv2 = new ExposedList<Vector2>(minimumVertexCount);
+						uv3 = new ExposedList<Vector2>(minimumVertexCount);
+					}
+					uv2.Resize(minimumVertexCount);
+					uv3.Resize(minimumVertexCount);
+				}
+				
+				if (includeNormals) {
+					if (normals == null)
+						normals = new Vector3[minimumVertexCount];
+					else
+						Array.Resize(ref normals, minimumVertexCount);
+
+				}
+
+				if (includeTangents) {
+					if (tangents == null)
+						tangents = new Vector4[minimumVertexCount];
+					else
+						Array.Resize(ref tangents, minimumVertexCount);
+				}
+			}
+			//vertexBuffer.Count = uvBuffer.Count = colorBuffer.Count = minimumVertexCount;
+		}
 
 		public void TrimExcess () {
 			vertexBuffer.TrimExcess();
